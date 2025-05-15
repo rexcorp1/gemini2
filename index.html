@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="icon" href="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" sizes="any" type="image/svg+xml">
+	<link rel="icon" href="https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png" sizes="any" type="image/png">
+	<title>Gemini</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Google+Sans+Text:wght@400;500&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="sidebar-closed">
+	<div class="flex h-screen flex-container">
+		<aside id="sidebar" class="sidebar">
+			<div class="flex-shrink-0 space-y-1">
+				<div class="menu-button-container">
+					<button id="menu-toggle-button-desktop" class="icon-button hamburger-menu p-2 rounded-full hover:bg-gray-200"> <span class="google-symbols">menu</span> </button>
+				</div>
+				<a href="#" id="new-chat-button" class="sidebar-item">
+					<div class="icon-wrapper"> <span><span class="google-symbols">edit_square</span></span>
+					</div> <span class="sidebar-text">New chat</span> </a>
+			</div>
+			<div class="sidebar-middle-section">
+				<div class="sidebar-scrollable-content space-y-1">
+					<h2 class="recent-header hide-when-closed">Gems</h2>
+					<a href="#" class="sidebar-item active coding-partner-item hide-when-closed">
+						<div class="icon-wrapper"> <span class="coding-icon-container">
+                                <span class="google-symbols coding-icon">code</span> </span>
+						</div> <span class="sidebar-text">Coding partner</span> </a>
+					<a href="#" class="sidebar-item hide-when-closed" aria-label="Explore Gems">
+						<div class="icon-wrapper"> <span>
+                                <span class="google-symbols">gem_spark</span> </span>
+						</div> <span class="sidebar-text">Explore Gems</span> </a>
+					<h2 class="recent-header hide-when-closed">Recent</h2>
+					<nav id="recent-chats-list" class="pt-2 hide-when-closed flex flex-col space-y-0.5 mb-2">
+						<a href="#" class="sidebar-item recent-item justify-start px-0 py-1.5 text-sm truncate"> <span class="recent-text">Flutter Pub Get Error: Depe...</span>
+							<button class="recent-item-more-button" aria-label="More options"> <span class="google-symbols">more_vert</span> </button>
+						</a>
+						<a href="#" class="sidebar-item recent-item active justify-start px-0 py-1.5 text-sm truncate"> <span class="recent-text">Cryomancer Definition and...</span>
+							<button class="recent-item-more-button" aria-label="More options"> <span class="google-symbols">more_vert</span> </button>
+						</a>
+						<a href="#" class="sidebar-item recent-item justify-start px-0 py-1.5 text-sm truncate"> <span class="recent-text">Sapaan Singkat dan Balasan</span>
+							<button class="recent-item-more-button" aria-label="More options"> <span class="google-symbols">more_vert</span> </button>
+						</a>
+						<a href="#" class="sidebar-item recent-item justify-start px-0 py-1.5 text-sm truncate"> <span class="recent-text">Sapaan Singkat dan Balasan</span>
+							<button class="recent-item-more-button" aria-label="More options"> <span class="google-symbols">more_vert</span> </button>
+						</a>
+						<a href="#" class="sidebar-item recent-item justify-start px-0 py-1.5 text-sm truncate"> <span class="recent-text">Sapaan dan Pertanyaan Sin...</span>
+							<button class="recent-item-more-button" aria-label="More options"> <span class="google-symbols">more_vert</span> </button>
+						</a>
+						<button class="sidebar-item flex items-center space-x-1 px-3 py-2 text-sm hover:bg-gray-200 w-full text-left mt-1 rounded-full show-more-button"> <span>Show more</span> <span class="google-symbols text-base">expand_more</span> </button>
+					</nav>
+				</div>
+			</div>
+			<nav class="mt-auto flex-shrink-0 pt-2">
+				<a href="#" id="settings-help-button" class="sidebar-item" aria-label="Settings & help">
+					<div class="icon-wrapper"> <span> <span class="google-symbols">settings_2</span> </span>
+						</span>
+					</div> <span class="sidebar-text">Settings & help</span> </a>
+			</nav>
+		</aside>
+		<div class="sidebar-overlay" id="sidebar-overlay"></div>
+		<div class="bottom-sheet-overlay" id="bottom-sheet-overlay"></div>
+		<div class="ai-menu-bottom-sheet-overlay" id="ai-options-overlay"></div>
+		<main id="main-content" class="main-content">
+			<header class="main-header">
+				<div class="header-left-wrapper flex-grow">
+					<button id="menu-toggle-button-mobile" class="icon-button hamburger-menu p-2 rounded-full hover:bg-gray-200 md:hidden"> <span class="google-symbols">menu</span> </button>
+					<div class="header-title-container"> <span class="gemini-title">Gemini</span>
+						<button class="flash-button" id="mode-switcher-button" aria-haspopup="true" aria-expanded="false"> <span id="selected-mode-text">2.0 Flash</span> <span class="google-symbols">arrow_drop_down</span> </button>
+					</div>
+				</div>
+				<div class="header-icons-container">
+					<button class="gemini-advanced-button"> <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_red_4ed1cbfcbc6c9e84c31b987da73fc4168aec8445.svg" alt="Gemini Advanced Sparkle"> <span>Try Gemini Advanced</span> </button>
+					<button class="icon-button" aria-label="Storage"> <span class="google-symbols">home_storage</span> </button>
+					<button class="icon-button" aria-label="Google Apps"><svg class="gb_F" focusable="false" viewBox="0 0 24 24" fill="currentColor"><path d="M6,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM16,6c0,1.1 0.9,2 2,2s2,-0.9 2,-2 -0.9,-2 -2,-2 -2,0.9 -2,2zM12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2z"></path></svg></button>
+					<button class="icon-button profile-button" aria-label="User Profile"> <img src="https://placehold.co/32x32/E0E0E0/BDBDBD?text=R" alt="Profil Pengguna" class="profile-image"> </button>
+				</div>
+			</header>
+			<div class="content-center">
+				<div class="greeting-text">
+					<h1>Hello, Guest</h1> </div>
+				<div class="chat-content-wrapper"> </div>
+			</div>
+			<div class="input-container">
+				<div class="input-area-wrapper">
+					<div class="input-top-row">
+						<textarea id="chat-input" rows="1" placeholder="Ask Gemini"></textarea>
+					</div>
+					<div class="input-bottom-row">
+						<button id="input-add-button" class="icon-button add-button" aria-label="Upload file"> <span class="google-symbols">add</span> </button>
+						<button class="text-button input-action-button deep-research-button"> <span class="google-symbols">travel_explore</span> <span>Deep Research</span> </button>
+						<button class="text-button input-action-button canvas-button"> <span class="google-symbols">note_stack_add</span> <span>Canvas</span> </button>
+						<button id="send-mic-button" class="icon-button mic-button" aria-label="Use microphone"> <span id="send-mic-icon" class="google-symbols">mic</span> </button>
+					</div>
+				</div>
+				<p class="disclaimer"> Gemini can make mistakes, so double-check it </p>
+			</div>
+		</main>
+	</div>
+	<div class="model-dropdown" id="model-dropdown-menu" role="menu">
+		<div class="dropdown-header">
+			<div class="item-icon"> <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini Icon"> </div> <span class="item-text-main">Gemini</span> </div>
+		<div class="dropdown-item selected" role="menuitemradio" aria-checked="true" data-value="2.0 Flash">
+			<div class="item-icon"></div>
+			<div class="item-text-content"> <span class="item-text-main">2.0 Flash</span> <span class="item-text-sub">Get everyday help</span> </div> <span class="google-symbols checkmark-icon">check_circle</span> </div>
+		<div class="dropdown-item" role="menuitemradio" aria-checked="false" data-value="2.5 Flash (experimental)">
+			<div class="item-icon"></div>
+			<div class="item-text-content"> <span class="item-text-main">2.5 Flash (experimental)</span> <span class="item-text-sub">Uses advanced reasoning</span> </div> <span class="google-symbols checkmark-icon">check_circle</span> </div>
+		<div class="dropdown-item" role="menuitemradio" aria-checked="false" data-value="2.5 Pro (experimental)">
+			<div class="item-icon"></div>
+			<div class="item-text-content"> <span class="item-text-main">2.5 Pro (experimental)</span> <span class="item-text-sub">Best for complex tasks</span> </div> <span class="google-symbols checkmark-icon">check_circle</span> </div>
+		<div class="dropdown-item" role="menuitemradio" aria-checked="false" data-value="Deep Research">
+			<div class="item-icon"></div>
+			<div class="item-text-content"> <span class="item-text-main">Deep Research</span> <span class="item-text-sub">Get in-depth research reports</span> </div> <span class="google-symbols checkmark-icon">check_circle</span> </div>
+		<div class="dropdown-item" role="menuitemradio" aria-checked="false" data-value="Personalization (experimental)">
+			<div class="item-icon"></div>
+			<div class="item-text-content"> <span class="item-text-main">Personalization (experimental)</span> <span class="item-text-sub">Help based on your Search history</span> </div> <span class="google-symbols checkmark-icon">check_circle</span> </div>
+		<div class="dropdown-item item-gemini-advanced" role="menuitem" data-value="Gemini Advanced">
+			<div class="item-icon"> <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_red_4ed1cbfcbc6c9e84c31b987da73fc4168aec8445.svg" alt="Gemini Advanced Icon"> </div>
+			<div class="item-text-content"> <span class="item-text-main">Gemini Advanced</span> </div>
+			<button class="upgrade-button">Upgrade</button>
+		</div>
+	</div>
+	<ul id="recent-item-options-menu" class="context-menu-popup">
+		<li><a href="#" data-action="share"><span class="google-symbols">share</span> Share</a></li>
+		<li><a href="#" data-action="pin"><span class="google-symbols">push_pin</span> Pin</a></li>
+		<li><a href="#" data-action="rename"><span class="google-symbols">edit</span> Rename</a></li>
+		<li><a href="#" data-action="delete"><span class="google-symbols">delete</span> Delete</a></li>
+	</ul>
+	<ul id="input-add-options-menu" class="context-menu-popup input-add-menu">
+		<li><a href="#" data-action="upload_files"><span class="google-symbols">attach_file</span> Upload files</a></li>
+		<li><a href="#" data-action="add_from_drive"><span class="google-symbols">drive</span> Add from Drive</a></li>
+	</ul>
+	<ul id="settings-help-menu" class="context-menu-popup">
+		<li><a href="#" data-action="activity"><span class="google-symbols">history</span> Activity</a></li>
+		<li><a href="#" data-action="saved_info"><span class="google-symbols">personal_recommendations</span> Saved info</a></li>
+		<li><a href="#" data-action="apps"><span class="google-symbols">extension</span> Apps</a></li>
+		<li><a href="#" data-action="public_links"><span class="google-symbols">link</span> Your public links</a></li>
+		<li data-has-submenu="true" data-submenu-id="theme-submenu">
+			<a href="#" data-action="theme"> <span class="google-symbols">routine</span> Theme <span class="google-symbols menu-item-arrow">chevron_right</span> </a>
+		</li>
+		<li><a href="#" data-action="send_feedback"><span class="google-symbols">feedback</span> Send feedback</a></li>
+		<li data-has-submenu="true" data-submenu-id="help-submenu">
+			<a href="#" data-action="help"> <span class="google-symbols">help_outline</span> Help <span class="google-symbols menu-item-arrow">chevron_right</span> </a>
+		</li>
+		<li class="menu-footer-text"> <span class="location-dot"></span> West Java, Indonesia
+			<br> From your IP address &bull; <a href="#" data-action="update_location">Update location</a> </li>
+	</ul>
+	<ul id="theme-submenu" class="context-menu-popup submenu">
+		<li><a href="#" class="submenu-item" data-theme="system">System <span class="google-symbols trailing-icon">check_circle</span></a></li>
+		<li><a href="#" class="submenu-item" data-theme="light">Light <span class="google-symbols trailing-icon">check_circle</span></a></li>
+		<li><a href="#" class="submenu-item" data-theme="dark">Dark <span class="google-symbols trailing-icon">check_circle</span></a></li>
+	</ul>
+	<ul id="help-submenu" class="context-menu-popup submenu">
+		<li><a href="#" class="submenu-item" data-action="help_center"><span class="google-symbols">help</span>Help Center</a></li>
+		<li><a href="#" class="submenu-item" data-action="privacy"><span class="google-symbols">privacy_tip</span>Privacy</a></li>
+	</ul>
+	<!-- Menu untuk Opsi Pesan AI -->
+	<ul id="ai-message-options-menu" class="context-menu-popup">
+		<li><a href="#" data-action="double_check_response"><span class="google-symbols">tune</span> Double-check response</a></li>
+		<li><a href="#" data-action="copy_response"><span class="google-symbols">content_copy</span> Copy</a></li>
+		<li><a href="#" data-action="listen_response"><span class="google-symbols">volume_up</span> Listen</a></li>
+		<li><a href="#" data-action="report_legal_issue"><span class="google-symbols">flag</span> Report legal issue</a></li>
+	</ul>
+	<!-- AI Message Options Bottom Sheet (Mobile) -->
+	<div id="ai-message-options-sheet" class="ai-message-options-sheet-container">
+		<div class="bottom-sheet-gripper"></div>
+		<div class="bottom-sheet-top-actions">
+			<button class="action-item" data-action="redo_response_sheet"> <span class="icon-wrapper"><span class="google-symbols">redo</span></span> <span>Redo</span> </button>
+			<button class="action-item" data-action="good_response_sheet"> <span class="icon-wrapper"><span class="google-symbols">thumb_up</span></span> <span>Good</span> </button>
+			<button class="action-item" data-action="bad_response_sheet"> <span class="icon-wrapper"><span class="google-symbols">thumb_down</span></span> <span>Bad</span> </button>
+			<button class="action-item" data-action="listen_response_sheet"> <span class="icon-wrapper"><span class="google-symbols">volume_up</span></span> <span>Read</span> </button>
+		</div>
+		<div class="bottom-sheet-list-section">
+			<ul class="ai-message-options-menu">
+				<li><a href="#" data-action="copy_response_sheet"><span class="google-symbols">content_copy</span> Copy</a></li>
+				<li><a href="#" data-action="double_check_response_sheet"><span class="google-symbols">rule</span> Double-check response</a></li>
+				<li><a href="#" data-action="share_conversation_sheet"><span class="google-symbols">share</span> Share conversation</a></li>
+				<li><a href="#" data-action="export_to_sheet"><span class="google-symbols">docs</span> Export to...</a></li>
+			</ul>
+		</div>
+		<div class="bottom-sheet-report-item"> <a href="#" data-action="report_legal_issue_sheet"><span class="google-symbols">flag</span> Report legal issue</a> </div>
+		<div class="bottom-sheet-spacer"></div>
+	</div>
+
+	<div class="fixed top-4 right-4">
+    <button id="user-icon-button" class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+        <img id="header-user-pic" src="https://placehold.co/40x40/E0E0E0/BDBDBD?text=U" alt="User" class="w-8 h-8 rounded-full">
+    </button>
+</div>
+
+<div id="account-dialog-overlay" class="fixed inset-0 bg-black bg-opacity-30 z-[1050] hidden">
+	<div id="account-dialog"
+		class="absolute top-16 right-4 bg-[--gem-sys-color--surface-container-high] text-[--gem-sys-color--on-surface] rounded-2xl shadow-xl w-72 p-0 overflow-hidden">
+		<div class="px-4 pt-4 pb-2 flex items-center justify-center relative">
+			<p id="account-dialog-user-email-top" class="text-xs text-[--gem-sys-color--on-surface-variant] truncate">
+				userlongemailaddress@example.com</p> <button id="account-dialog-close-button-x"
+				class="absolute right-4 top-1/2 transform -translate-y-1/2 text-[--gem-sys-color--on-surface-variant] hover:text-[--gem-sys-color--on-surface]"> <svg
+					xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+					stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"></line>
+					<line x1="6" y1="6" x2="18" y2="18"></line>
+				</svg>
+			</button>
+		</div>
+
+		<div class="flex flex-col items-center px-4 pb-5 pt-1"> <img id="account-dialog-user-pic"
+				src="https://placehold.co/80x80/E0E0E0/BDBDBD?text=U" alt="User"
+				class="w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-2">
+			<p id="account-dialog-greeting" class="text-lg font-medium mb-1">Hi, User Name!</p>
+			<p id="account-dialog-user-email-main"
+				class="text-xs text-[--gem-sys-color--on-surface-variant] mb-3 hidden">user@example.com</p>
+
+
+			<button id="account-dialog-sign-out-button"
+				class="w-full text-center px-3 py-2 rounded-full border border-[--gem-sys-color--outline] hover:bg-[--gem-sys-color--surface-container-highest] text-[--gem-sys-color--primary] text-sm hidden">
+				Sign Out
+			</button>
+			<button id="account-dialog-sign-in-button"
+				class="w-full bg-[--gem-sys-color--primary] text-[--gem-sys-color--on-primary] px-3 py-2 rounded-full hover:bg-opacity-90 text-sm hidden">
+				Sign in with Google
+			</button>
+
+			<p id="account-dialog-not-signed-in-text"
+				class="text-xs text-center text-[--gem-sys-color--on-surface-variant] mt-3 hidden"> You are not signed
+				in. <br>Sign in to access more features.
+			</p>
+		</div>
+	</div>
+</div>
+
+
+		<!-- SVG Templates for AI Avatars -->
+	<template id="ai-avatar-static-initial-template">
+		<img src="assets/IMG/ai-avatar.svg" alt="AI Avatar" width="30" height="30">
+	</template>
+
+	<template id="ai-avatar-animated-template">
+		<svg class="ai-avatar-animated-svg" viewBox="0 0 32 32" preserveAspectRatio="xMidYMid meet">
+			<defs>
+				<clipPath id="__lottie_element_48_chat_tpl">
+					<rect width="32" height="32" x="0" y="0"></rect>
+				</clipPath>
+				<g id="__lottie_element_55_chat_tpl">
+					<g transform="matrix(0.9999992251396179,-0.001229780144058168,0.001229780144058168,0.9999992251396179,16,16)"
+						opacity="1" style="display: block;">
+						<g opacity="1" transform="matrix(1,0,0,1,0,0)">
+							<path fill="url(#__lottie_element_58_chat_tpl)" fill-opacity="1"
+								d="M0.027,14 C0.48,6.49 6.49,0.48 14,0.027 C14,0.027 14,-0.027 14,-0.027 C6.49,-0.48 0.48,-6.49 0.027,-14 C0.027,-14 -0.027,-14 -0.027,-14 C-0.48,-6.49 -6.49,-0.48 -14,-0.027 C-14,-0.027 -14,0.027 -14,0.027 C-6.49,0.48 -0.48,6.49 -0.027,14 C-0.027,14 0.027,14 0.027,14z">
+							</path>
+						</g>
+					</g>
+				</g>
+				<linearGradient id="__lottie_element_58_chat_tpl" spreadMethod="pad" gradientUnits="userSpaceOnUse"
+					x1="-9.223" y1="8.49" x2="10.462" y2="-8.212">
+					<stop offset="0%" stop-color="rgb(33,123,254)"></stop>
+					<stop offset="100%" stop-color="rgb(189,153,254)"></stop>
+				</linearGradient>
+				<linearGradient id="__lottie_element_62_chat_tpl" spreadMethod="pad" gradientUnits="userSpaceOnUse"
+					x1="-4.003" y1="4.63" x2="8.092" y2="-7.886">
+					<stop offset="0%" stop-color="rgb(33,123,254)"></stop>
+					<stop offset="100%" stop-color="rgb(189,153,254)"></stop>
+				</linearGradient>
+				<mask id="__lottie_element_55_1_chat_tpl" mask-type="alpha">
+					<use href="#__lottie_element_55_chat_tpl"></use>
+				</mask>
+			</defs>
+			<g clip-path="url(#__lottie_element_48_chat_tpl)">
+				<g mask="url(#__lottie_element_55_1_chat_tpl)" style="display: block;">
+					<g transform="matrix(1,0,0,1,16,16)" opacity="1">
+						<g opacity="1" transform="matrix(1,0,0,1,0,0)">
+							<path fill="url(#__lottie_element_62_chat_tpl)" fill-opacity="1"
+								d="M0,-16 C8.83,-16 16,-8.83 16,0 C16,8.83 8.83,16 0,16 C-8.83,16 -16,8.83 -16,0 C-16,-8.83 -8.83,-16 0,-16z">
+							</path>
+						</g>
+					</g>
+				</g>
+			</g>
+		</svg>
+	</template>
+
+	<template id="ai-avatar-static-final-template">
+		<img src="assets/IMG/ai-avatar.svg" alt="AI Avatar" width="30" height="30">
+	</template>
+	<!-- End SVG Templates -->
+
+	<!-- Hidden input for file upload -->
+	<input type="file" id="file-upload-input" hidden>
+
+	<!-- Markdown Library -->
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+	<!-- Firebase SDKs -->
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+	<script src="js/firebase.config.js" type="module"></script>
+	<script src="js/function.js" type="module"></script>
+	<script src="js/script.js" type="module"></script>
+
+</body>
+</html>
