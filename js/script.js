@@ -1163,11 +1163,19 @@ if (recentItemOptionsMenu) {
 	});
 }
 
+function adjustAppHeight() {
+    const appContainer = document.querySelector('.flex-container'); // Atau elemen root aplikasi lo
+    if (appContainer) {
+        appContainer.style.height = `${window.innerHeight}px`;
+    }
+}
+
 window.addEventListener('load', () => {
 	bodyElement.dataset.isMobile = (window.innerWidth <= MOBILE_BREAKPOINT).toString();
 	updateLayout();
 	toggleEmptyStateUI();
 	updateSendButtonState();
+	adjustAppHeight();
 });
 
 window.addEventListener('resize', () => {
@@ -1200,6 +1208,7 @@ window.addEventListener('resize', () => {
 	bodyElement.dataset.isMobile = isMobile.toString();
 	toggleEmptyStateUI();
 	updateSendButtonState();
+	adjustAppHeight();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
