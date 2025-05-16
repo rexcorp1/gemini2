@@ -5,47 +5,70 @@
  * Firebase Storage operations, and Gemini API interactions.
  */
 
-import { firebaseConfig } from './firebase.config.js';
+const vercelFirebaseConfig = {
+    apiKey: process.env.VERCEL_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.VERCEL_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.VERCEL_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VERCEL_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VERCEL_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VERCEL_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.VERCEL_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
 
-// Inisialisasi Firebase
-if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
-    try {
-        firebase.initializeApp(firebaseConfig);
-    } catch (e) {
-        if (e.code !== 'app/duplicate-app') {
+let authInstance, dbInstance, storageInstance, googleProviderInstance;
+
+if (vercelFirebaseConfig.apiKey && vercelFirebaseConfig.projectId) {
+    if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') {
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(vercelFirebaseConfig);
+                console.log("Firebase initialized successfully using Vercel environment variables.");
+            } else {
+                console.warn("Firebase app already initialized. Using existing app instance.");
+            }
+            authInstance = firebase.auth();
+            dbInstance = firebase.firestore();
+            storageInstance = firebase.storage();
+            googleProviderInstance = new firebase.auth.GoogleAuthProvider();
+        } catch (e) {
             console.error("Firebase initialization error:", e);
-            throw e;
-        } else {
-            console.warn("Firebase app already initialized.");
         }
+    } else {
+        console.error("Firebase SDK (namespaced version) not loaded before function.js. Make sure Firebase scripts are included in index.html and loaded before this script.");
     }
 } else {
-    console.error("Firebase SDK not loaded before function.js. Make sure Firebase scripts are in index.html and loaded first.");
+    console.error("Firebase configuration is missing from Vercel environment variables. Please set them in your Vercel project settings. Remember to prefix client-side variables with VERCEL_PUBLIC_");
 }
 
-export const auth = firebase.auth();
-export const db = firebase.firestore();
-export const storage = firebase.storage();
-export const googleProvider = new firebase.auth.GoogleAuthProvider();
+export const auth = authInstance;
+export const db = dbInstance;
+export const storage = storageInstance;
+export const googleProvider = googleProviderInstance;
 
 export const GEMINI_PROXY_URL = 'https://gemini-backend.deno.dev';
 
 // --- FUNGSI AUTENTIKASI ---
 export const signInWithGoogle = async () => {
     try {
+        if (!auth) {
+            console.error("Firebase Auth is not initialized. Cannot sign in.");
+            return null;
+        }
         const result = await auth.signInWithPopup(googleProvider);
         console.log("Signed in successfully via function.js:", result.user);
         return result.user;
     } catch (error) {
         console.error("Error signing in with Google via function.js:", error);
-        // Jangan tampilkan alert di sini, biarkan UI handler yang memutuskan
-        // alert(`Login failed: ${error.message}`);
         return null;
     }
 };
 
 export const signOut = async () => {
     try {
+        if (!auth) {
+            console.error("Firebase Auth is not initialized. Cannot sign out.");
+            return false;
+        }
         await auth.signOut();
         console.log("Signed out successfully via function.js");
         return true;
@@ -56,13 +79,11 @@ export const signOut = async () => {
 };
 
 // --- INTERAKSI DENGAN GEMINI API (MELALUI PROXY) ---
-export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelId = "gemini-2.0-flash") => { // Default modelId disesuaikan
+export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelId = "gemini-2.0-flash") => {
     if (!promptText || !promptText.trim()) {
         console.warn("callGeminiAPI: promptText is empty or undefined.");
         return null;
     }
-    // Tambahkan log untuk userId di sini juga jika perlu, tapi biasanya userId untuk API call tidak langsung mempengaruhi Firestore rules
-    // console.log("callGeminiAPI called with userId for API (not Firestore path):", userId);
 
     try {
         const response = await fetch(GEMINI_PROXY_URL, {
@@ -93,7 +114,11 @@ export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelI
 
 // --- FUNGSI FIRESTORE ---
 export const saveChatToFirestore = async (userId, chatId, messages, title) => {
-    console.log("[Firestore Call] saveChatToFirestore - userId:", userId, "chatId:", chatId); // DEBUG LOG
+    console.log("[Firestore Call] saveChatToFirestore - userId:", userId, "chatId:", chatId);
+    if (!db) {
+        console.error("Firestore (db) is not initialized. Cannot save chat.");
+        return null;
+    }
     if (!userId || !messages || messages.length === 0) {
         console.warn("saveChatToFirestore: Missing userId or messages. Aborting save.");
         return null;
@@ -103,7 +128,7 @@ export const saveChatToFirestore = async (userId, chatId, messages, title) => {
         const messageToSaveData = {
             role: msg.role,
             content: msg.content,
-            timestamp: msg.timestamp || new Date()
+            timestamp: msg.timestamp || new Date() // Pastikan timestamp selalu ada
         };
         if (msg.fileURL) messageToSaveData.fileURL = msg.fileURL;
         if (msg.fileName) messageToSaveData.fileName = msg.fileName;
@@ -111,7 +136,7 @@ export const saveChatToFirestore = async (userId, chatId, messages, title) => {
     });
 
     const chatData = {
-        userId: userId, // Simpan juga userId di dalam data chat untuk referensi jika perlu
+        userId: userId,
         messages: messagesToSave,
         lastMessageTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
         title: title || (messages[0]?.content?.substring(0, 30) + (messages[0]?.content?.length > 30 ? '...' : '') || "New Chat")
@@ -135,7 +160,11 @@ export const saveChatToFirestore = async (userId, chatId, messages, title) => {
 };
 
 export const fetchRecentChatsFromFirestore = async (userId) => {
-    console.log("[Firestore Call] fetchRecentChatsFromFirestore - userId:", userId); // DEBUG LOG
+    console.log("[Firestore Call] fetchRecentChatsFromFirestore - userId:", userId);
+    if (!db) {
+        console.error("Firestore (db) is not initialized. Cannot fetch recent chats.");
+        return [];
+    }
     if (!userId) {
         console.warn("fetchRecentChatsFromFirestore: No userId provided. Returning empty array.");
         return [];
@@ -158,7 +187,11 @@ export const fetchRecentChatsFromFirestore = async (userId) => {
 };
 
 export const fetchChatFromFirestore = async (userId, chatId) => {
-    console.log("[Firestore Call] fetchChatFromFirestore - userId:", userId, "chatId:", chatId); // DEBUG LOG
+    console.log("[Firestore Call] fetchChatFromFirestore - userId:", userId, "chatId:", chatId);
+    if (!db) {
+        console.error("Firestore (db) is not initialized. Cannot fetch chat.");
+        return null;
+    }
     if (!userId || !chatId) {
         console.warn("fetchChatFromFirestore: Missing userId or chatId. Returning null.");
         return null;
@@ -168,7 +201,12 @@ export const fetchChatFromFirestore = async (userId, chatId) => {
         if (doc.exists) {
             const chatData = doc.data();
             if (chatData.messages && Array.isArray(chatData.messages)) {
-                 chatData.messages.sort((a, b) => (a.timestamp?.toDate() || 0) - (b.timestamp?.toDate() || 0));
+                 chatData.messages.forEach(msg => {
+                     if (msg.timestamp && typeof msg.timestamp.toDate === 'function') {
+                         msg.timestamp = msg.timestamp.toDate();
+                     }
+                 });
+                 chatData.messages.sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
             }
             return { id: doc.id, ...chatData };
         } else {
@@ -184,6 +222,10 @@ export const fetchChatFromFirestore = async (userId, chatId) => {
 // --- FUNGSI FIRESTORE (Rename & Delete) ---
 export const renameChatInFirestore = async (userId, chatId, newTitle) => {
     console.log("[Firestore Call] renameChatInFirestore - userId:", userId, "chatId:", chatId, "newTitle:", newTitle); // DEBUG LOG
+    if (!db) {
+        console.error("Firestore (db) is not initialized. Cannot rename chat.");
+        return false;
+    }
 	if (!userId || !chatId || !newTitle || !newTitle.trim()) {
 		console.warn("renameChatInFirestore: Missing userId, chatId, or newTitle. Aborting rename.");
 		return false;
@@ -191,7 +233,7 @@ export const renameChatInFirestore = async (userId, chatId, newTitle) => {
 	try {
 		await db.collection('users').doc(userId).collection('chats').doc(chatId).update({
 			title: newTitle.trim(),
-			lastMessageTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+			lastMessageTimestamp: firebase.firestore.FieldValue.serverTimestamp() // Menggunakan FieldValue dari instance namespaced
 		});
 		console.log("Chat renamed in Firestore:", chatId, "to", newTitle.trim());
 		return true;
@@ -202,7 +244,11 @@ export const renameChatInFirestore = async (userId, chatId, newTitle) => {
 };
 
 export const deleteChatFromFirestore = async (userId, chatId) => {
-    console.log("[Firestore Call] deleteChatFromFirestore - userId:", userId, "chatId:", chatId); // DEBUG LOG
+    console.log("[Firestore Call] deleteChatFromFirestore - userId:", userId, "chatId:", chatId);
+    if (!db) {
+        console.error("Firestore (db) is not initialized. Cannot delete chat.");
+        return false;
+    }
 	if (!userId || !chatId) {
 		console.warn("deleteChatFromFirestore: Missing userId or chatId. Aborting delete.");
 		return false;
@@ -220,6 +266,10 @@ export const deleteChatFromFirestore = async (userId, chatId) => {
 // --- FUNGSI FIREBASE STORAGE ---
 export const uploadFileToStorage = async (userId, file) => {
     console.log("[Storage Call] uploadFileToStorage - userId:", userId, "fileName:", file?.name); // DEBUG LOG
+    if (!storage) {
+        console.error("Firebase Storage is not initialized. Cannot upload file.");
+        return null;
+    }
     if (!userId || !file) {
         console.warn("uploadFileToStorage: Missing userId or file. Aborting upload.");
         return null;
