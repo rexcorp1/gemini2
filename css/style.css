@@ -210,7 +210,6 @@ html.dark-theme {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	min-height: 0;
 	margin-top: 20px;
 }
 

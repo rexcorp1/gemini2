@@ -3,6 +3,7 @@
  * Handles UI interactions, event listeners, and integrates with core functions
  * from function.js for Firebase and Gemini API interactions.
  */
+
 import {
 	auth,
 	signInWithGoogle as fbSignInWithGoogle,
@@ -11,7 +12,7 @@ import {
 	saveChatToFirestore,
 	fetchRecentChatsFromFirestore,
 	fetchChatFromFirestore,
-	uploadFileToStorage, // <-- Tambahkan koma di sini
+	uploadFileToStorage,
 	renameChatInFirestore,
 	deleteChatFromFirestore
 } from './function.js';
@@ -33,48 +34,45 @@ const sendMicButton = document.getElementById('send-mic-button');
 const sendMicIcon = document.getElementById('send-mic-icon');
 const chatContentWrapper = document.querySelector('.chat-content-wrapper');
 const disclaimerText = document.querySelector('.disclaimer');
-const aiMessageOptionsSheet = document.getElementById('ai-message-options-sheet'); // Pindahkan ke scope global jika diakses global
-const aiOptionsOverlay = document.getElementById('ai-options-overlay'); // Pindahkan ke scope global jika diakses global
-const recentItemOptionsMenu = document.getElementById('recent-item-options-menu'); // Menu konteks untuk item recent
+const aiMessageOptionsSheet = document.getElementById('ai-message-options-sheet');
+const aiOptionsOverlay = document.getElementById('ai-options-overlay');
+const recentItemOptionsMenu = document.getElementById('recent-item-options-menu');
 
-// User profile elements (assuming they exist or will be used from your HTML)
-const profileButton = document.querySelector('.profile-button'); // Or a more specific selector
+// User profile elements
+const profileButton = document.querySelector('.profile-button');
 const userProfilePic = profileButton ? profileButton.querySelector('.profile-image') : null;
-const userGreeting = document.querySelector('.greeting-text h1'); // Assuming h1 inside greeting-text
-const fileUploadInput = document.getElementById('file-upload-input'); // Make sure this exists in HTML
+const userGreeting = document.querySelector('.greeting-text h1');
+const fileUploadInput = document.getElementById('file-upload-input');
 
 // Account Dialog Elements
 const accountDialogOverlay = document.getElementById('account-dialog-overlay');
 const accountDialog = document.getElementById('account-dialog');
 const accountDialogUserPic = document.getElementById('account-dialog-user-pic');
-const accountDialogGreeting = document.getElementById('account-dialog-greeting'); // Corrected: Targets ID 'account-dialog-greeting'
-const accountDialogUserEmailTop = document.getElementById('account-dialog-user-email-top'); // Added: Targets ID 'account-dialog-user-email-top'
-const accountDialogUserEmailMain = document.getElementById('account-dialog-user-email-main'); // Corrected: Targets ID 'account-dialog-user-email-main'
+const accountDialogGreeting = document.getElementById('account-dialog-greeting');
+const accountDialogUserEmailTop = document.getElementById('account-dialog-user-email-top');
+const accountDialogUserEmailMain = document.getElementById('account-dialog-user-email-main');
 const accountDialogSignOutButton = document.getElementById('account-dialog-sign-out-button');
 const accountDialogSignInButton = document.getElementById('account-dialog-sign-in-button');
 const accountDialogNotSignedInText = document.getElementById('account-dialog-not-signed-in-text');
-const accountDialogCloseButton = document.getElementById('account-dialog-close-button-x'); // Corrected: Targets ID 'account-dialog-close-button-x'
-
-// Deklarasikan variabel menu yang diakses secara global di sini
-const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu'); // Deklarasi di scope global
-let currentAiMessageTriggerButton = null; // Juga pindahkan jika diakses global
+const accountDialogCloseButton = document.getElementById('account-dialog-close-button-x');
+const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu');
+let currentAiMessageTriggerButton = null;
 
 const MOBILE_BREAKPOINT = 768;
 let isMouseOverSidebar = false;
 let isSending = false;
 
 // Default profile picture and alt text (accessible globally)
-const DEFAULT_PROFILE_PIC = 'https://placehold.co/32x32/E0E0E0/BDBDBD?text=R'; // Example
-const DEFAULT_PROFILE_ALT = 'Profil Pengguna'; // Example
+const DEFAULT_PROFILE_PIC = 'https://placehold.co/32x32/E0E0E0/BDBDBD?text=R';
+const DEFAULT_PROFILE_ALT = 'Profil Pengguna';
 
 // Application State
 let currentUser = null;
 let currentChatId = null;
-let currentChatMessages = []; // Stores { role, content, timestamp?, fileURL?, fileName? }
+let currentChatMessages = [];
 
 function updateLayout() {
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
-
 	if (!isMobile) {
 		const isPinned = bodyElement.classList.contains('sidebar-pinned');
 		const isClosed = bodyElement.classList.contains('sidebar-closed');
@@ -114,7 +112,7 @@ function updateLayout() {
 			modelDropdownMenu.style.backgroundColor = 'var(--gem-sys-color--surface-container)';
 			modelDropdownMenu.style.paddingBottom = '32px';
 			modelDropdownMenu.style.zIndex = '1005';
-		} else { // Desktop styles for model dropdown
+		} else {
 			if (modeSwitcherButton && modeSwitcherButton.parentElement) {
 				const buttonRect = modeSwitcherButton.getBoundingClientRect();
 				const titleContainerRect = modeSwitcherButton.parentElement.getBoundingClientRect();
@@ -122,7 +120,6 @@ function updateLayout() {
 				modelDropdownMenu.style.position = 'absolute';
 				modelDropdownMenu.style.top = (window.scrollY + buttonRect.bottom + 4) + 'px';
 				modelDropdownMenu.style.left = (window.scrollX + titleContainerRect.left) + 'px';
-
 				modelDropdownMenu.style.bottom = 'auto';
 				modelDropdownMenu.style.right = 'auto';
 				modelDropdownMenu.style.width = '320px';
@@ -149,30 +146,27 @@ function updateLayout() {
 		}
 	}
 	requestAnimationFrame(() => {
-		chatInput ?.dispatchEvent(new Event('input'));
+		chatInput?.dispatchEvent(new Event('input'));
 	});
 }
 
 function toggleEmptyStateUI() {
 	if (!chatContentWrapper || !greetingText || !disclaimerText) return;
 	const hasMessages = chatContentWrapper.children.length > 0;
-	greetingText.style.display = hasMessages ?'none' : 'block';
-	chatContentWrapper.style.display = hasMessages ?'flex' : 'none';
-	disclaimerText.style.visibility = hasMessages ?'visible' : 'hidden';
+	greetingText.style.display = hasMessages ? 'none' : 'block';
+	chatContentWrapper.style.display = hasMessages ? 'flex' : 'none';
+	disclaimerText.style.visibility = hasMessages ? 'visible' : 'hidden';
 }
 
 function updateSendButtonState() {
 	if (!sendMicButton || !sendMicIcon || !chatInput) return;
 	const inputText = chatInput.value.trim();
 
-	// Hapus class state karena kita akan atur style langsung di JS
-	// sendMicButton.classList.remove('state-sending', 'state-has-input', 'state-idle');
 	sendMicIcon.style.fontVariationSettings = "";
 
 	if (isSending) {
 		sendMicIcon.textContent = 'stop';
 		sendMicIcon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20";
-		// Atur style langsung
 		sendMicIcon.style.color = 'var(--gem-sys-color--primary)';
 		sendMicButton.style.backgroundColor = 'var(--gem-sys-color--primary-container)';
 		sendMicButton.setAttribute('aria-label', 'Stop generating');
@@ -180,53 +174,43 @@ function updateSendButtonState() {
 	} else if (inputText !== '') {
 		sendMicIcon.textContent = 'send';
 		sendMicIcon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20";
-		// Atur style langsung
 		sendMicIcon.style.color = 'var(--default-icon-color)';
 		sendMicButton.style.backgroundColor = 'var(--gem-sys-color--surface-container)';
 		sendMicButton.setAttribute('aria-label', 'Send message');
 		chatInput.disabled = false;
 	} else {
 		sendMicIcon.textContent = 'mic';
-		// Atur style langsung
 		sendMicIcon.style.color = 'var(--default-icon-color)';
-		sendMicButton.style.removeProperty('background-color'); // Hapus background biar transparan
+		sendMicButton.style.removeProperty('background-color');
 		sendMicButton.setAttribute('aria-label', 'Use microphone');
 		chatInput.disabled = false;
 	}
 }
 
 // --- Popup/Menu Management Functions ---
-// Moved outside DOMContentLoaded to be accessible globally/in module scope
 function hideAllPopups(exceptMenu = null, exceptSubmenu = null) {
-	// Select all elements that function as popups or submenus
 	document.querySelectorAll('.context-menu-popup.show, .submenu.show, .bottom-sheet-open').forEach(menu => {
-		// Check if the current menu is the one being explicitly excluded
 		const isExcepted = (exceptMenu && menu === exceptMenu) || (exceptSubmenu && menu === exceptSubmenu);
 
 		if (!isExcepted) {
-			// For elements controlled by classes like 'show' or 'bottom-sheet-open'
 			menu.classList.remove('show');
-			menu.classList.remove('bottom-sheet-open'); // Also handle bottom sheets
-
-			// For elements controlled by style.display (like modelDropdownMenu on mobile)
+			menu.classList.remove('bottom-sheet-open');
 			if (menu.style.display === 'block') {
 				menu.style.display = 'none';
 			}
 		}
 	});
-	// Reset specific state variables if the corresponding menu is not excepted
+
 	if (recentItemOptionsMenu && recentItemOptionsMenu !== exceptMenu) recentItemOptionsMenu.classList.remove('show');
 	if (aiMessageOptionsMenu && aiMessageOptionsMenu !== exceptMenu) aiMessageOptionsMenu.classList.remove('show');
-	// Note: activeSubmenu state is handled within the settings menu logic
 }
+
 // --- Account Dialog Functions ---
 function openAccountDialog() {
-	// Ensure all necessary dialog elements are found before proceeding
 	if (!accountDialogOverlay || !accountDialog || !accountDialogUserPic ||
 		!accountDialogGreeting || !accountDialogUserEmailTop || !accountDialogUserEmailMain ||
 		!accountDialogSignOutButton || !accountDialogSignInButton || !accountDialogNotSignedInText) {
 		console.warn("Account dialog: One or more elements not found. Cannot fully update content.");
-		// Attempt to show basic dialog structure if core elements exist
 		if (accountDialogOverlay && accountDialog) {
 			accountDialogOverlay.classList.remove('hidden');
 			accountDialogOverlay.classList.add('flex');
@@ -235,41 +219,33 @@ function openAccountDialog() {
 		return;
 	}
 
-	// Reset visibility for elements that change based on login state
 	accountDialogUserEmailTop.classList.add('hidden');
-	// accountDialogUserEmailMain is hidden by default in HTML, manage if shown for logged-in
 	accountDialogSignOutButton.classList.add('hidden');
 	accountDialogSignInButton.classList.add('hidden');
 	accountDialogNotSignedInText.classList.add('hidden');
-	accountDialogUserPic.classList.add('hidden'); // Hide pic by default, show if user
+	accountDialogUserPic.classList.add('hidden');
 
 	if (currentUser) {
 		if (accountDialogUserPic) accountDialogUserPic.src = currentUser.photoURL || DEFAULT_PROFILE_PIC;
 		if (accountDialogUserPic) accountDialogUserPic.alt = currentUser.displayName || DEFAULT_PROFILE_ALT;
 		if (accountDialogUserPic) accountDialogUserPic.classList.remove('hidden');
-
 		if (accountDialogGreeting) accountDialogGreeting.textContent = `Hi, ${currentUser.displayName || 'User'}`;
-		
 		if (accountDialogUserEmailTop) accountDialogUserEmailTop.textContent = currentUser.email || '';
 		if (accountDialogUserEmailTop) accountDialogUserEmailTop.classList.remove('hidden');
-
 		if (accountDialogUserEmailMain) accountDialogUserEmailMain.textContent = currentUser.email || '';
-		// if (accountDialogUserEmailMain) accountDialogUserEmailMain.classList.remove('hidden'); // Show if needed for logged-in users
-
 		if (accountDialogSignOutButton) accountDialogSignOutButton.classList.remove('hidden');
 	} else {
-		if (accountDialogUserPic) accountDialogUserPic.src = DEFAULT_PROFILE_PIC; // Placeholder
+		if (accountDialogUserPic) accountDialogUserPic.src = DEFAULT_PROFILE_PIC;
 		if (accountDialogUserPic) accountDialogUserPic.alt = DEFAULT_PROFILE_ALT;
-		// if (accountDialogUserPic) accountDialogUserPic.classList.remove('hidden'); // Optionally show placeholder pic for guest
-		if (accountDialogGreeting) accountDialogGreeting.textContent = 'Hello, Guest'; // Request: Change greeting
-		if (accountDialogUserEmailMain) accountDialogUserEmailMain.textContent = ''; // Clear main email
+		if (accountDialogGreeting) accountDialogGreeting.textContent = 'Hello, Guest';
+		if (accountDialogUserEmailMain) accountDialogUserEmailMain.textContent = '';
 		if (accountDialogSignInButton) accountDialogSignInButton.classList.remove('hidden');
 		if (accountDialogNotSignedInText) accountDialogNotSignedInText.classList.remove('hidden');
 	}
 
 	if (accountDialogOverlay) {
 		accountDialogOverlay.classList.remove('hidden');
-		accountDialogOverlay.classList.add('flex'); // Untuk centering
+		accountDialogOverlay.classList.add('flex');
 		if (accountDialog) accountDialog.classList.remove('hidden');
 	}
 }
@@ -279,7 +255,7 @@ function closeAccountDialog() {
 		accountDialogOverlay.classList.add('hidden');
 		accountDialogOverlay.classList.remove('flex');
 	}
-	if (accountDialog) accountDialog.classList.add('hidden'); // Sembunyikan dialognya juga
+	if (accountDialog) accountDialog.classList.add('hidden');
 }
 
 // --- Firebase Auth State Change Handler ---
@@ -292,15 +268,13 @@ auth.onAuthStateChanged(async user => {
 			userProfilePic.alt = user.displayName || DEFAULT_PROFILE_ALT;
 		}
 		if (profileButton) {
-			profileButton.onclick = openAccountDialog; // Buka dialog, bukan langsung sign out
+			profileButton.onclick = openAccountDialog;
 			profileButton.setAttribute('aria-label', 'Sign Out');
 		}
-		await uiLoadRecentChats(); // Ini akan memuat chat jika ada
-		if (!currentChatId && chatContentWrapper.children.length === 0) { 
-			// uiStartNewChat(); // Ini akan nambahin pesan AI "Hi there..."
-			// Jika mau benar-benar kosong setelah login (hanya Hello, <user>):
-			resetChatArea(); // Cukup reset, jangan panggil uiStartNewChat yang nambah pesan AI
-			toggleEmptyStateUI(); // Pastikan greeting text yang tampil
+		await uiLoadRecentChats();
+		if (!currentChatId && chatContentWrapper.children.length === 0) {
+			resetChatArea();
+			toggleEmptyStateUI();
 		}
 	} else {
 		if (userGreeting) userGreeting.textContent = 'Hello, Guest';
@@ -309,23 +283,23 @@ auth.onAuthStateChanged(async user => {
 			userProfilePic.alt = DEFAULT_PROFILE_ALT;
 		}
 		if (profileButton) {
-			profileButton.onclick = openAccountDialog; // Buka dialog, bukan langsung sign in
+			profileButton.onclick = openAccountDialog;
 			profileButton.setAttribute('aria-label', 'Sign In with Google');
 		}
-		if (chatContentWrapper) chatContentWrapper.innerHTML = ''; // Clear chat view
-		toggleEmptyStateUI(); // Show greeting
-		const recentChatsList = document.getElementById('recent-chats-list'); // Already declared
+		if (chatContentWrapper) chatContentWrapper.innerHTML = '';
+		toggleEmptyStateUI();
+		const recentChatsList = document.getElementById('recent-chats-list');
 		if (recentChatsList) recentChatsList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500 hide-when-closed">Log in to see recent chats.</p>';
 		currentChatId = null;
 		currentChatMessages = [];
 	}
-	updateLayout(); // Panggil updateLayout untuk menyesuaikan margin, dll.
+	updateLayout();
 });
 
 // Event Listeners untuk Account Dialog
 if (accountDialogOverlay) {
 	accountDialogOverlay.addEventListener('click', (e) => {
-		if (e.target === accountDialogOverlay) { // Hanya tutup jika klik di overlay, bukan di dialognya
+		if (e.target === accountDialogOverlay) {
 			closeAccountDialog();
 		}
 	});
@@ -344,7 +318,6 @@ if (accountDialogSignOutButton) accountDialogSignOutButton.addEventListener('cli
 });
 
 // --- UI Layer Functions for Core Logic ---
-
 async function uiHandleSendMessage(promptText, fileInfo = null) {
 	if (!currentUser) {
 		alert("Please log in to send messages.");
@@ -356,13 +329,11 @@ async function uiHandleSendMessage(promptText, fileInfo = null) {
 	isSending = true;
 	updateSendButtonState();
 
-    	// Dapatkan model yang dipilih dari data-value item dropdown yang 'selected'
-	let selectedModelId = "gemini-2.0-flash"; // Default fallback sesuai mapping lo
+	let selectedModelId = "gemini-2.0-flash";
 	const selectedDropdownItem = modelDropdownMenu ? modelDropdownMenu.querySelector('.dropdown-item.selected') : null;
 	const uiModelValue = selectedDropdownItem ? selectedDropdownItem.dataset.value : null;
 
 	if (uiModelValue) {
-		// Mapping dari data-value UI ke ID model API sesuai permintaan lo
 		switch (uiModelValue) {
 			case "2.0 Flash":
 				selectedModelId = "gemini-2.0-flash";
@@ -374,10 +345,10 @@ async function uiHandleSendMessage(promptText, fileInfo = null) {
 				selectedModelId = "gemini-2.5-pro-preview-05-06";
 				break;
 			case "Deep Research":
-				selectedModelId = "gemini-2.0-flash"; // Mapping sesuai permintaan
+				selectedModelId = "gemini-2.0-flash";
 				break;
 			case "Personalization (experimental)":
-				selectedModelId = "gemini-2.0-flash"; // Mapping sesuai permintaan
+				selectedModelId = "gemini-2.0-flash";
 				break;
 			default:
 				console.warn("Model value from UI not recognized, using default:", uiModelValue, "Default ID:", selectedModelId);
@@ -405,12 +376,11 @@ async function uiHandleSendMessage(promptText, fileInfo = null) {
 	chatInput?.dispatchEvent(new Event('input'));
 
 	const aiLoadingBubble = addMessageToChat(null, 'ai');
-	// Setelah bubble dibuat, kita bisa langsung trigger animasi loading jika diinginkan
 	if (aiLoadingBubble) startAILoadingAnimation(aiLoadingBubble);
 
 	const historyForAPI = currentChatMessages.slice(0, -1)
-		.filter(msg => msg.role && msg.content) // Ensure role and content exist
-		.map(msg => ({ role: msg.role, parts: [{ text: msg.content + (msg.fileName ? ` (File: ${msg.fileName})` : '') }]	}));
+		.filter(msg => msg.role && msg.content)
+		.map(msg => ({ role: msg.role, parts: [{ text: msg.content + (msg.fileName ? ` (File: ${msg.fileName})` : '') }] }));
 
 	const aiResponse = await callGeminiAPI(combinedPrompt, currentUser.uid, historyForAPI, selectedModelId);
 
@@ -427,7 +397,7 @@ async function uiHandleSendMessage(promptText, fileInfo = null) {
 	chatInput?.focus();
 }
 
-menuToggleButtonDesktop ?.addEventListener('click', () => {
+menuToggleButtonDesktop?.addEventListener('click', () => {
 	if (window.innerWidth > MOBILE_BREAKPOINT) {
 		bodyElement.classList.toggle('sidebar-pinned');
 		if (bodyElement.classList.contains('sidebar-pinned')) {
@@ -443,18 +413,18 @@ menuToggleButtonDesktop ?.addEventListener('click', () => {
 	}
 });
 
-menuToggleButtonMobile ?.addEventListener('click', () => {
+menuToggleButtonMobile?.addEventListener('click', () => {
 	bodyElement.classList.toggle('sidebar-open-mobile');
 	if (bodyElement.classList.contains('sidebar-open-mobile')) {
 		bodyElement.classList.remove('sidebar-closed');
 	}
 });
 
-sidebarOverlay ?.addEventListener('click', () => {
+sidebarOverlay?.addEventListener('click', () => {
 	bodyElement.classList.remove('sidebar-open-mobile');
 });
 
-sidebar ?.addEventListener('mouseenter', () => {
+sidebar?.addEventListener('mouseenter', () => {
 	isMouseOverSidebar = true;
 	if (window.innerWidth > MOBILE_BREAKPOINT && !bodyElement.classList.contains('sidebar-pinned')) {
 		bodyElement.classList.remove('sidebar-closed');
@@ -462,7 +432,7 @@ sidebar ?.addEventListener('mouseenter', () => {
 	}
 });
 
-chatInput ?.addEventListener('input', () => {
+chatInput?.addEventListener('input', () => {
 	chatInput.style.height = 'auto';
 	const minHeight = 24;
 	const maxHeight = 200;
@@ -471,7 +441,7 @@ chatInput ?.addEventListener('input', () => {
 	updateSendButtonState();
 });
 
-sidebar ?.addEventListener('mouseleave', () => {
+sidebar?.addEventListener('mouseleave', () => {
 	isMouseOverSidebar = false;
 	if (window.innerWidth > MOBILE_BREAKPOINT && !bodyElement.classList.contains('sidebar-pinned')) {
 		bodyElement.classList.add('sidebar-closed');
@@ -507,7 +477,7 @@ function closeBottomSheet() {
 	updateLayout();
 }
 
-modeSwitcherButton ?.addEventListener('click', (event) => {
+modeSwitcherButton?.addEventListener('click', (event) => {
 	event.stopPropagation();
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 	if (isMobile) {
@@ -525,7 +495,7 @@ modeSwitcherButton ?.addEventListener('click', (event) => {
 	}
 });
 
-modelDropdownMenu ?.addEventListener('click', (event) => {
+modelDropdownMenu?.addEventListener('click', (event) => {
 	const targetItem = event.target.closest('.dropdown-item');
 	if (!targetItem) return;
 
@@ -559,13 +529,13 @@ modelDropdownMenu ?.addEventListener('click', (event) => {
 document.addEventListener('click', (event) => {
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 	if (!isMobile) {
-		if (modelDropdownMenu ?.classList.contains('show') &&
+		if (modelDropdownMenu?.classList.contains('show') &&
 			!modeSwitcherButton.contains(event.target) &&
 			!modelDropdownMenu.contains(event.target)) {
 			toggleDropdownDesktop(false);
 		}
 	} else {
-		if (bodyElement.classList.contains('bottom-sheet-open') && !modelDropdownMenu.contains(event.target) && !modeSwitcherButton.contains(event.target)) {}
+		if (bodyElement.classList.contains('bottom-sheet-open') && !modelDropdownMenu.contains(event.target) && !modeSwitcherButton.contains(event.target)) { }
 	}
 });
 
@@ -575,22 +545,19 @@ recentItems.forEach(item => {
 		if (item.getAttribute('href') === '#') {
 			e.preventDefault();
 		}
-		// Active class handling should be part of uiLoadChat
 		recentItems.forEach(el => el.classList.remove('active'));
 		item.classList.add('active');
-		console.log('Recent item clicked:', item.querySelector('.recent-text') ?.textContent.trim());
-
+		console.log('Recent item clicked:', item.querySelector('.recent-text')?.textContent.trim());
 		if (window.innerWidth <= MOBILE_BREAKPOINT) {
 			bodyElement.classList.remove('sidebar-open-mobile');
 			if (!bodyElement.classList.contains('sidebar-pinned')) {
 				bodyElement.classList.add('sidebar-closed');
 			}
 		}
-		const chatId = item.dataset.chatId; // Assuming recent items will have data-chat-id
+		const chatId = item.dataset.chatId;
 		if (chatId) await uiLoadChat(chatId);
 	});
 });
-
 
 function addMessageToChat(text, type) {
 	if (!chatContentWrapper) return;
@@ -606,8 +573,6 @@ function addMessageToChat(text, type) {
 		const messageTextDiv = document.createElement('div');
 		messageTextDiv.classList.add('message-text');
 		messageTextDiv.textContent = text;
-
-		// TODO: Add markdown rendering for user messages if needed
 		messageContentUser.appendChild(messageTextDiv);
 		messageBubble.appendChild(messageContentUser);
 
@@ -709,7 +674,7 @@ function addMessageToChat(text, type) {
 				});
 				div.style.fontStyle = "normal";
 				div.style.color = "var(--gem-sys-color--on-surface)";
-			} else { // Ini untuk bubble "Just a sec..." yang baru
+			} else {
 				const loadingText = "Just a sec...";
 				div.textContent = loadingText;
 				div.style.fontStyle = "italic";
@@ -718,12 +683,10 @@ function addMessageToChat(text, type) {
 		});
 
 		[avatarDivDesktop, avatarDivMobile].forEach(avatarContainer => {
-			// Avatar untuk AI message yang dibuat oleh addMessageToChat selalu statis.
-			// Animasi ditangani oleh startAILoadingAnimation dan updateAIMessageBubble.
 			const template = document.getElementById('ai-avatar-static-initial-template');
 			if (template) {
 				const svgNode = template.content.cloneNode(true);
-				avatarContainer.innerHTML = ''; // Pastikan bersih dulu
+				avatarContainer.innerHTML = '';
 				avatarContainer.appendChild(svgNode);
 			} else {
 				console.error('Template "ai-avatar-static-initial-template" not found.');
@@ -745,26 +708,20 @@ function startAILoadingAnimation(aiMessageBubble) {
 
 	[avatarDesktopContainer, avatarMobileContainer].forEach(container => {
 		if (!container) return;
-		container.innerHTML = ''; // Bersihkan avatar statis awal dari addMessageToChat
+		container.innerHTML = '';
 		const template = document.getElementById('ai-avatar-animated-template');
 
 		if (template) {
-			// Ambil elemen <svg> dari dalam template
 			const svgElementFromTemplate = template.content.querySelector('svg');
 			if (svgElementFromTemplate) {
 				const clonedSvgElement = svgElementFromTemplate.cloneNode(true);
-
-				// Buat lagi struktur wrapper seperti yang mungkin ada di kode lama lo
-				// Sesuaikan class-nya jika beda
 				const animatedWrapper = document.createElement('div');
-				animatedWrapper.className = 'ai-avatar-animated-container'; // Ganti jika class wrapper beda
-
+				animatedWrapper.className = 'ai-avatar-animated-container';
 				const loaderDiv = document.createElement('div');
-				loaderDiv.className = 'ai-avatar-loader'; // Ganti jika class loader beda, atau hapus jika tidak ada
-
-				animatedWrapper.appendChild(loaderDiv); // Tambahkan loader ke wrapper
-				animatedWrapper.appendChild(clonedSvgElement); // Tambahkan SVG animasi ke wrapper
-				container.appendChild(animatedWrapper); // Masukkan wrapper ke kontainer avatar
+				loaderDiv.className = 'ai-avatar-loader';
+				animatedWrapper.appendChild(loaderDiv);
+				animatedWrapper.appendChild(clonedSvgElement);
+				container.appendChild(animatedWrapper);
 			} else {
 				console.error('Elemen <svg> tidak ditemukan di dalam template "ai-avatar-animated-template".');
 			}
@@ -783,7 +740,7 @@ function updateAIMessageBubble(aiMessageBubble, newText, isStillLoadingAnimation
 
 	[textDesktopDiv, textMobileDiv].forEach(div => {
 		if (div) {
-			div.innerHTML = marked.parse(newText); // Use marked.js to render markdown
+			div.innerHTML = marked.parse(newText);
 			div.querySelectorAll('table').forEach(table => {
 				const wrapper = document.createElement('div');
 				wrapper.classList.add('table-scroll-wrapper');
@@ -798,8 +755,7 @@ function updateAIMessageBubble(aiMessageBubble, newText, isStillLoadingAnimation
 	if (!isStillLoadingAnimation) {
 		[avatarDesktopContainer, avatarMobileContainer].forEach(container => {
 			if (!container) return;
-			container.innerHTML = ''; // Bersihkan avatar animasi
-			// Gunakan template avatar statis awal untuk konsistensi
+			container.innerHTML = '';
 			const template = document.getElementById('ai-avatar-static-initial-template');
 			if (template) {
 				const svgNode = template.content.cloneNode(true);
@@ -824,10 +780,10 @@ function simulateAIResponse(userMessageText) {
 		isSending = false;
 		updateSendButtonState();
 		chatInput?.focus();
-	}, 2000); // Jaga timeout ini untuk simulasi saja
+	}, 2000);
 }
 
-sendMicButton ?.addEventListener('click', () => {
+sendMicButton?.addEventListener('click', () => {
 	if (isSending) {
 		console.log('Stop generating (placeholder)');
 		isSending = false;
@@ -840,9 +796,9 @@ sendMicButton ?.addEventListener('click', () => {
 	}
 });
 
-chatInput ?.addEventListener('keydown', (event) => {
+chatInput?.addEventListener('keydown', (event) => {
 	if (event.key === 'Enter') {
-		if (event.shiftKey || event.ctrlKey) {} else {
+		if (event.shiftKey || event.ctrlKey) { } else {
 			event.preventDefault();
 			if (sendMicButton && chatInput.value.trim() !== '' && !isSending) {
 				sendMicButton.click();
@@ -853,20 +809,20 @@ chatInput ?.addEventListener('keydown', (event) => {
 
 function resetChatArea() {
 	if (chatContentWrapper) {
-		chatContentWrapper.innerHTML = ''; // Clear all messages
+		chatContentWrapper.innerHTML = '';
 	}
 	if (chatInput) {
 		chatInput.value = '';
-		chatInput.dispatchEvent(new Event('input')); // Resize and update button
+		chatInput.dispatchEvent(new Event('input'));
 	}
 	toggleEmptyStateUI();
 	updateSendButtonState();
 	isSending = false;
-	chatInput ?.focus();
+	chatInput?.focus();
 }
 
 const newChatSidebarItem = document.getElementById('new-chat-button');
-newChatSidebarItem ?.addEventListener('click', (event) => {
+newChatSidebarItem?.addEventListener('click', (event) => {
 	event.preventDefault();
 	uiStartNewChat();
 
@@ -879,10 +835,10 @@ newChatSidebarItem ?.addEventListener('click', (event) => {
 	document.querySelectorAll('.sidebar-item.recent-item.active').forEach(activeRecentItem => {
 		activeRecentItem.classList.remove('active');
 	});
-	chatInput ?.focus();
+	chatInput?.focus();
 });
 
-// --- UI Layer Functions for Firestore/Storage (called by other UI functions or event handlers) ---
+// --- UI Layer Functions for Firestore/Storage ---
 async function uiSaveChat() {
 	if (!currentUser || currentChatMessages.length === 0) return;
 	let title = null;
@@ -895,7 +851,7 @@ async function uiSaveChat() {
 		if (firstUserMsg) title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
 		else {
 			const firstFileMsg = currentChatMessages.find(m => m.role === 'user' && m.fileName);
-			if (firstFileMsg) title = `Chat with ${firstFileMsg.fileName.substring(0,20)}...`;
+			if (firstFileMsg) title = `Chat with ${firstFileMsg.fileName.substring(0, 20)}...`;
 		}
 	}
 	title = title || "New Chat";
@@ -904,9 +860,9 @@ async function uiSaveChat() {
 		const messageData = {
 			role: m.role,
 			content: m.content,
-			timestamp: m.timestamp // Timestamp (objek Date) harus selalu ada
+			timestamp: m.timestamp
 		};
-		// Hanya tambahkan fileURL dan fileName jika ada nilainya (bukan undefined atau null)
+
 		if (m.fileURL) messageData.fileURL = m.fileURL;
 		if (m.fileName) messageData.fileName = m.fileName;
 		return messageData;
@@ -926,7 +882,7 @@ async function uiLoadRecentChats() {
 	if (!currentUser || !recentChatsList) return;
 	recentChatsList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500 hide-when-closed">Loading...</p>';
 	const chats = await fetchRecentChatsFromFirestore(currentUser.uid);
-	if (!recentChatsList || !chats) { // Handle case where chats might be null/undefined
+	if (!recentChatsList || !chats) {
 		recentChatsList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500 hide-when-closed">Error loading chats.</p>';
 		return;
 	}
@@ -936,7 +892,7 @@ async function uiLoadRecentChats() {
 		recentChatsList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500 hide-when-closed">No recent chats.</p>';
 		return;
 	}
-	// Tampilkan hanya 5 chat pertama secara default
+
 	const displayLimit = 5;
 	const chatsToDisplay = chats.slice(0, displayLimit);
 
@@ -956,7 +912,7 @@ async function uiLoadRecentChats() {
 		moreButton.setAttribute('aria-label', 'More options for this chat');
 		moreButton.innerHTML = '<span class="google-symbols">more_vert</span>';
 		moreButton.addEventListener('click', (e) => {
-			e.stopPropagation(); // Mencegah item chat utama ter-klik
+			e.stopPropagation();
 			e.preventDefault();
 			uiShowRecentItemMenu(moreButton, chat.id, chat.title || 'Untitled Chat');
 		});
@@ -964,7 +920,6 @@ async function uiLoadRecentChats() {
 		item.appendChild(recentText);
 		item.appendChild(moreButton);
 		item.addEventListener('click', async (e) => {
-			// Pastikan klik bukan pada tombol 'more'
 			if (e.target !== moreButton && !moreButton.contains(e.target)) {
 				e.preventDefault();
 				await uiLoadChat(chat.id);
@@ -973,68 +928,53 @@ async function uiLoadRecentChats() {
 		recentChatsList.appendChild(item);
 	});
 
-	// Jika ada lebih dari 5 chat, tambahkan tombol "Show More"
 	if (chats.length > displayLimit) {
-		// Buat tombol Show More dengan struktur HTML yang sesuai dengan desain awal
-		// <button class="..."><span>Show more</span><span class="material-symbols-outlined">expand_more</span></button>
 		const showMoreButton = document.createElement('button');
 		showMoreButton.className = 'sidebar-item flex items-center space-x-1 px-3 py-2 text-sm hover:bg-gray-200 w-full text-left mt-1 rounded-full show-more-button hide-when-closed'; // Gunakan class dari HTML awal
 
 		const textSpan = document.createElement('span');
-		textSpan.textContent = 'Show more'; // Teks
-		textSpan.classList.add('font-medium'); // Tambahkan class untuk font agak tebal (sesuaikan jika class lo beda)
+		textSpan.textContent = 'Show more';
+		textSpan.classList.add('font-medium');
 
 		const iconSpan = document.createElement('span');
-		iconSpan.className = 'google-symbols text-base'; // Gunakan class google-symbols
+		iconSpan.className = 'google-symbols text-base';
 		iconSpan.textContent = 'expand_more';
-
-		// Masukkan span teks dan span ikon ke dalam tombol
 		showMoreButton.appendChild(textSpan);
 		showMoreButton.appendChild(iconSpan);
 
 		showMoreButton.addEventListener('click', (e) => {
 			e.preventDefault();
-			// Saat tombol diklik, tampilkan semua chat
-			recentChatsList.innerHTML = ''; // Bersihkan daftar yang ada
-			chats.forEach(chat => { // Tampilkan semua chat
+			recentChatsList.innerHTML = '';
+			chats.forEach(chat => {
 				const item = document.createElement('a');
 				item.href = '#';
 				item.className = 'sidebar-item recent-item justify-start px-0 py-1.5 text-sm truncate hide-when-closed';
 				item.dataset.chatId = chat.id;
 				if (chat.id === currentChatId) item.classList.add('active');
-				item.innerHTML = `<span class="recent-text">${chat.title || 'Untitled Chat'}</span><button class="recent-item-more-button ml-auto" aria-label="More options for this chat"><span class="google-symbols">more_vert</span></button>`; // Re-create more button
-				// Re-attach event listener for more button and item click
+				item.innerHTML = `<span class="recent-text">${chat.title || 'Untitled Chat'}</span><button class="recent-item-more-button ml-auto" aria-label="More options for this chat"><span class="google-symbols">more_vert</span></button>`;
 				item.querySelector('.recent-item-more-button')?.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); uiShowRecentItemMenu(e.currentTarget, chat.id, chat.title || 'Untitled Chat'); });
 				item.addEventListener('click', async (e) => { if (e.target !== item.querySelector('.recent-item-more-button') && !item.querySelector('.recent-item-more-button').contains(e.target)) { e.preventDefault(); await uiLoadChat(chat.id); } });
 				recentChatsList.appendChild(item);
 			});
-			// Setelah menampilkan semua chat, tombol Show More tidak perlu ditambahkan lagi
-			// showMoreButton.remove(); // Hapus tombol Show More setelah diklik
-
 		});
 		recentChatsList.appendChild(showMoreButton);
-	} // Penutup untuk if (chats.length > displayLimit)
+	}
 }
 
 async function uiLoadChat(chatId) {
 	if (!currentUser) return;
-	resetChatArea(); // Clear view first
-	const loadingBubble = addMessageToChat(null, 'ai'); // Show "Just a sec..." bubble
-
+	resetChatArea();
+	const loadingBubble = addMessageToChat(null, 'ai');
 	const chatData = await fetchChatFromFirestore(currentUser.uid, chatId);
-
-	// Hapus bubble "Just a sec..." setelah data chat berhasil diambil (atau gagal)
 	if (loadingBubble) {
 		loadingBubble.remove();
 	}
-
-	if (chatData && chatData.messages) { // Pastikan chatData dan chatData.messages ada
+	if (chatData && chatData.messages) {
 		currentChatId = chatId;
-		currentChatMessages = chatData.messages ? chatData.messages.map(m => ({...m, timestamp: m.timestamp?.toDate() })) : [];
+		currentChatMessages = chatData.messages ? chatData.messages.map(m => ({ ...m, timestamp: m.timestamp?.toDate() })) : [];
 
 
 		currentChatMessages.forEach(msg => {
-			// Untuk file, kita perlu pastikan addMessageToChat bisa menampilkannya dengan benar dari history
 			addMessageToChat(msg.content, msg.role /*, msg.fileURL, msg.fileName */);
 		});
 		document.querySelectorAll('#recent-chats-list .sidebar-item.active').forEach(i => i.classList.remove('active'));
@@ -1044,7 +984,7 @@ async function uiLoadChat(chatId) {
 		alert("Chat not found.");
 		uiStartNewChat();
 	}
-	toggleEmptyStateUI(); // Panggil di akhir untuk update UI berdasarkan ada/tidaknya pesan
+	toggleEmptyStateUI();
 }
 
 function uiStartNewChat() {
@@ -1052,10 +992,7 @@ function uiStartNewChat() {
 	currentChatId = null;
 	currentChatMessages = [];
 	if (currentUser) {
-		// Jangan langsung tambahkan pesan AI di sini jika ingin tampilan awal kosong
-		// addMessageToChat("Hi there! How can I help you today?", 'ai');
 	} else {
-		// Ini sudah ditangani di onAuthStateChanged
 	}
 	document.querySelectorAll('#recent-chats-list .sidebar-item.active').forEach(i => i.classList.remove('active'));
 	chatInput?.focus();
@@ -1067,12 +1004,12 @@ async function uiHandleFileUpload(file) {
 		alert("Please log in to upload files.");
 		return null;
 	}
-	addMessageToChat(`Uploading ${file.name}... (this is a user message)`, 'user'); // Placeholder for upload status
+	addMessageToChat(`Uploading ${file.name}... (this is a user message)`, 'user');
 
 	const uploadResult = await uploadFileToStorage(currentUser.uid, file);
 
 	if (uploadResult) {
-		await uiHandleSendMessage(null, uploadResult); // Send message with file info
+		await uiHandleSendMessage(null, uploadResult);
 		return uploadResult;
 	} else {
 		addMessageToChat(`Failed to upload ${file.name}.`, 'user');
@@ -1088,38 +1025,33 @@ function uiShowRecentItemMenu(buttonEl, chatId, chatTitle) {
 	if (!recentItemOptionsMenu) return;
 
 	currentRecentChatTarget = { id: chatId, title: chatTitle, buttonElement: buttonEl };
-	
-	// Sembunyikan semua popup lain dulu
-	hideAllPopups(recentItemOptionsMenu); // Pastikan hideAllPopups bisa menerima elemen yang dikecualikan
+	hideAllPopups(recentItemOptionsMenu);
 
 	const rect = buttonEl.getBoundingClientRect();
-	recentItemOptionsMenu.style.top = `${rect.bottom + window.scrollY + 2}px`; // Posisikan di bawah tombol
-	recentItemOptionsMenu.style.left = `${rect.left + window.scrollX - recentItemOptionsMenu.offsetWidth + rect.width}px`; // Rata kanan dengan tombol
+	recentItemOptionsMenu.style.top = `${rect.bottom + window.scrollY + 2}px`;
+	recentItemOptionsMenu.style.left = `${rect.left + window.scrollX - recentItemOptionsMenu.offsetWidth + rect.width}px`;
 	recentItemOptionsMenu.classList.add('show');
-
-	// Tambahkan event listener sekali jalan untuk menutup menu jika diklik di luar
-	// Listener ini akan dihapus otomatis setelah sekali jalan
 	document.addEventListener('click', handleClickOutsideRecentItemMenu, { once: true });
 }
 
 function handleClickOutsideRecentItemMenu(event) {
-    if (recentItemOptionsMenu && !recentItemOptionsMenu.contains(event.target) && currentRecentChatTarget.buttonElement && !currentRecentChatTarget.buttonElement.contains(event.target)) {
-        recentItemOptionsMenu.classList.remove('show');
-    }
+	if (recentItemOptionsMenu && !recentItemOptionsMenu.contains(event.target) && currentRecentChatTarget.buttonElement && !currentRecentChatTarget.buttonElement.contains(event.target)) {
+		recentItemOptionsMenu.classList.remove('show');
+	}
 }
 
 if (recentItemOptionsMenu) {
 	recentItemOptionsMenu.addEventListener('click', async (e) => {
 		e.preventDefault();
 		const actionableElement = e.target.closest('[data-action]');
-		console.log("Recent item menu clicked. Target:", e.target, "Closest actionable element:", actionableElement); // DEBUG
+		console.log("Recent item menu clicked. Target:", e.target, "Closest actionable element:", actionableElement);
 		if (actionableElement && actionableElement.dataset.action) {
-			console.log("Recent item menu action detected:", actionableElement.dataset.action); // DEBUG
+			console.log("Recent item menu action detected:", actionableElement.dataset.action);
 			const action = actionableElement.dataset.action;
 			const chatId = currentRecentChatTarget.id;
 			const currentTitle = currentRecentChatTarget.title;
-			console.log("Action details - Chat ID:", chatId, "Title:", currentTitle, "User:", currentUser ?.uid); // DEBUG
-			
+			console.log("Action details - Chat ID:", chatId, "Title:", currentTitle, "User:", currentUser?.uid);
+
 			if (!chatId || !currentUser) {
 				console.error("Chat ID or user not available for action:", action);
 				recentItemOptionsMenu.classList.remove('show');
@@ -1129,14 +1061,11 @@ if (recentItemOptionsMenu) {
 			if (action === 'rename') {
 				const newTitle = prompt("Enter new name for this chat:", currentTitle);
 				if (newTitle && newTitle.trim() !== "" && newTitle !== currentTitle) {
-					console.log("Attempting to rename chat:", chatId, "to new title:", newTitle.trim()); // DEBUG
+					console.log("Attempting to rename chat:", chatId, "to new title:", newTitle.trim());
 					const success = await renameChatInFirestore(currentUser.uid, chatId, newTitle.trim());
 					if (success) {
-						await uiLoadRecentChats(); // Refresh list
-						// Jika chat yang di-rename adalah chat aktif, update judul di UI utama jika ada elemennya
-						if (currentChatId === chatId && userGreeting /*atau elemen judul chat utama*/) {
-							// Misal, jika ada elemen khusus untuk judul chat aktif
-							// document.getElementById('active-chat-title').textContent = newTitle.trim();
+						await uiLoadRecentChats();
+						if (currentChatId === chatId && userGreeting {
 						}
 					} else {
 						alert("Failed to rename chat.");
@@ -1144,30 +1073,23 @@ if (recentItemOptionsMenu) {
 				}
 			} else if (action === 'delete') {
 				if (confirm(`Are you sure you want to delete "${currentTitle}"? This action cannot be undone.`)) {
-					console.log("Attempting to delete chat:", chatId); // DEBUG
+					console.log("Attempting to delete chat:", chatId);
 					const success = await deleteChatFromFirestore(currentUser.uid, chatId);
 					if (success) {
-						if (currentChatId === chatId) { // Jika chat aktif yang dihapus
-							uiStartNewChat(); // Mulai chat baru
+						if (currentChatId === chatId) {
+							uiStartNewChat();
 						}
-						await uiLoadRecentChats(); // Refresh list
+						await uiLoadRecentChats();
 					} else {
 						alert("Failed to delete chat.");
 					}
 				}
 			}
-			recentItemOptionsMenu.classList.remove('show'); // Sembunyikan menu setelah aksi
+			recentItemOptionsMenu.classList.remove('show');
 		} else {
-			console.log("Click inside recentItemOptionsMenu, but no valid action link found."); // DEBUG
+			console.log("Click inside recentItemOptionsMenu, but no valid action link found.");
 		}
 	});
-}
-
-function adjustAppHeight() {
-    const appContainer = document.querySelector('.flex-container'); // Atau elemen root aplikasi lo
-    if (appContainer) {
-        appContainer.style.height = `${window.innerHeight}px`;
-    }
 }
 
 window.addEventListener('load', () => {
@@ -1175,16 +1097,15 @@ window.addEventListener('load', () => {
 	updateLayout();
 	toggleEmptyStateUI();
 	updateSendButtonState();
-	adjustAppHeight();
 });
 
 window.addEventListener('resize', () => {
-	const wasMobile = bodyElement.dataset.isMobile === 'true'; // Check previous state
+	const wasMobile = bodyElement.dataset.isMobile === 'true';
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 
 	if (wasMobile && !isMobile && bodyElement.classList.contains('bottom-sheet-open')) {
 		closeBottomSheet();
-	} else if (!wasMobile && isMobile && modelDropdownMenu ?.classList.contains('show')) {
+	} else if (!wasMobile && isMobile && modelDropdownMenu?.classList.contains('show')) {
 		modelDropdownMenu.classList.remove('show');
 		if (modeSwitcherButton) {
 			modeSwitcherButton.classList.remove('open');
@@ -1194,11 +1115,9 @@ window.addEventListener('resize', () => {
 
 	updateLayout();
 
-	if (!isMobile) { // Desktop
+	if (!isMobile) {
 		if (bodyElement.classList.contains('sidebar-open-mobile')) {
 			bodyElement.classList.remove('sidebar-open-mobile');
-			// If not pinned, default to closed on desktop transition
-			// The hover/pin logic will then take over.
 			if (!bodyElement.classList.contains('sidebar-pinned')) {
 				bodyElement.classList.add('sidebar-closed');
 			}
@@ -1208,59 +1127,13 @@ window.addEventListener('resize', () => {
 	bodyElement.dataset.isMobile = isMobile.toString();
 	toggleEmptyStateUI();
 	updateSendButtonState();
-	adjustAppHeight();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
 	const recentChatsList = document.getElementById('recent-chats-list');
-	// const contextMenuRecent = document.getElementById('recent-item-options-menu'); // Already declared as recentItemOptionsMenu
 	let currentTargetRecentItem = null;
 	const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu');
-	let currentAiMessageTriggerButton = null; // Already declared globally
-/*
-	if (recentChatsList && recentItemOptionsMenu) { // Menggunakan variabel yang sudah dideklarasikan
-		const showContextMenuRecent = (event, buttonEl) => {
-			event.preventDefault();
-			event.stopPropagation();
-			hideAllPopups(recentItemOptionsMenu); // Gunakan recentItemOptionsMenu
-			currentTargetRecentItem = buttonEl.closest('.recent-item');
-			const rect = buttonEl.getBoundingClientRect();
-			recentItemOptionsMenu.style.top = `${rect.top + window.scrollY}px`;
-			recentItemOptionsMenu.style.left = `${rect.right + window.scrollX + 5}px`;
-			recentItemOptionsMenu.classList.add('show');
-			// document.addEventListener('click', handleClickOutsideRecentMenu, { once: true }); // Sudah dihandle oleh uiShowRecentItemMenu
-		};
-		const hideContextMenuRecent = () => {
-			if (recentItemOptionsMenu) recentItemOptionsMenu.classList.remove('show'); // Sudah benar
-		}
-		const handleClickOutsideRecentMenu = (event) => {
-			// Cek juga apakah klik terjadi pada tombol more yang memicu menu ini
-			const isClickOnCurrentMoreButton = currentRecentChatTarget.buttonElement && currentRecentChatTarget.buttonElement.contains(event.target);
-			if (recentItemOptionsMenu && !recentItemOptionsMenu.contains(event.target) && !isClickOnCurrentMoreButton) {
-				hideContextMenuRecent();
-			}
-		};
-		// Event listener untuk tombol more sudah ditambahkan di uiLoadRecentChats
-		// recentChatsList.addEventListener('click', (event) => {
-		// 	const moreButton = event.target.closest('.recent-item-more-button');
-		// 	if (moreButton) {
-		// 		// Logika ini sekarang ada di uiShowRecentItemMenu dan event listener tombol more di uiLoadRecentChats
-		// 	}
-		// });
-
-		// Event listener untuk aksi di menu sudah ditambahkan di atas (if (recentItemOptionsMenu))
-		 recentItemOptionsMenu.addEventListener('click', (event) => { // Pastikan ini juga menggunakan recentItemOptionsMenu
-			event.preventDefault();
-			const targetLink = event.target.closest('a');
-			if (targetLink && targetLink.dataset.action) {
-				console.log(`Recent Action: ${targetLink.dataset.action}, Chat ID: ${currentTargetRecentItem?.dataset.chatId || 'N/A'}`);
-				hideContextMenuRecent();
-			}
-		}); */ // Komentar ini mungkin perlu dibuka jika logika di atasnya (baris 817-850) belum mencakup semua
-	// } else {
-	// 	console.warn('Recent chats list or its context menu element not found.');
-	// }
-    // Logika untuk recent item menu sudah dipindahkan ke uiShowRecentItemMenu dan event listener di atasnya
+	let currentAiMessageTriggerButton = null;
 
 	const inputAddButton = document.getElementById('input-add-button');
 	const contextMenuInput = document.getElementById('input-add-options-menu');
@@ -1470,8 +1343,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// Theme logic (moved from inside DOMContentLoaded)
-	let activeSubmenu = null; // Need to keep track of active submenu for settings
-	let hideSubmenuTimer = null; // Timer for hiding submenu
+	let activeSubmenu = null;
+	let hideSubmenuTimer = null;
 	const htmlEl = document.documentElement;
 
 	function updateThemeSubmenuSelection(themeName) {
@@ -1487,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	function applyTheme(themeName) {
 		let actualTheme = themeName;
 		if (themeName === 'system') {
-			actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ?'dark' : 'light';
+			actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 		}
 		htmlEl.classList.toggle('dark-theme', actualTheme === 'dark');
 		localStorage.setItem('theme', themeName);
@@ -1502,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	});
 
-	function toggleAiMessageMenu(buttonEl) { // Logic for AI message options menu (desktop)
+	function toggleAiMessageMenu(buttonEl) {
 		if (!aiMessageOptionsMenu) return;
 
 		const isMenuOpenForThisButton = aiMessageOptionsMenu.classList.contains('show') && currentAiMessageTriggerButton === buttonEl;
@@ -1550,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	chatContentWrapper ?.addEventListener('click', function(event) {
+	chatContentWrapper?.addEventListener('click', function (event) {
 		const moreButton = event.target.closest('.ai-message-more-button');
 		if (moreButton) {
 			event.preventDefault();
@@ -1565,18 +1438,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	});
 
-	aiMessageOptionsMenu ?.addEventListener('click', (event) => { // Logic for AI message options menu actions
-		const targetLink = event.target.closest('a'); // Declare targetLink here
+	aiMessageOptionsMenu?.addEventListener('click', (event) => {
+		const targetLink = event.target.closest('a');
 		if (targetLink && targetLink.dataset.action) {
 			event.preventDefault();
 			const action = targetLink.dataset.action;
-			const messageBubble = currentAiMessageTriggerButton ?.closest('.message-bubble.ai');
+			const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
 			console.log(`AI Message Action: "${action}" triggered for message.`);
 			aiMessageOptionsMenu.classList.remove('show');
 			currentAiMessageTriggerButton = null;
 		}
 	});
 });
+
 // --- Logic for AI Message Options Bottom Sheet (Mobile) ---
 function openAiMessageOptionsSheet() {
 	if (!aiMessageOptionsSheet || !aiOptionsOverlay) return;
@@ -1597,16 +1471,14 @@ function closeAiMessageOptionsSheet() {
 	aiMessageOptionsSheet.classList.remove('show');
 }
 
-aiOptionsOverlay ?.addEventListener('click', () => { // Close bottom sheet on overlay click
-		closeAiMessageOptionsSheet();
-	}
-); // <-- Tambahkan tanda kurung tutup ini
+aiOptionsOverlay?.addEventListener('click', () => {
+	closeAiMessageOptionsSheet();
+}
+);
 
-aiMessageOptionsSheet ?.addEventListener('click', (event) => { // Logic for AI message options menu actions
-	// Listener ini menangani klik pada item aksi (a atau button) di dalam sheet
+aiMessageOptionsSheet?.addEventListener('click', (event) => {
 	const targetActionElement = event.target.closest('a, button.action-item');
 	if (targetActionElement && targetActionElement.dataset.action) {
-		// Gunakan targetActionElement karena ini elemen yang punya data-action
 		event.preventDefault();
 		const action = targetActionElement.dataset.action;
 		console.log(`AI Message Options Sheet Action: "${action}" triggered.`);
@@ -1614,7 +1486,7 @@ aiMessageOptionsSheet ?.addEventListener('click', (event) => { // Logic for AI m
 	}
 });
 
-bottomSheetOverlay ?.addEventListener('click', () => { // Close model dropdown bottom sheet on overlay click
-		closeBottomSheet();
-	}
-); // <-- Tambahkan tanda kurung tutup ini
+bottomSheetOverlay?.addEventListener('click', () => {
+	closeBottomSheet();
+}
+);

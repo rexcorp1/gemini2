@@ -38,8 +38,6 @@ export const signInWithGoogle = async () => {
         return result.user;
     } catch (error) {
         console.error("Error signing in with Google via function.js:", error);
-        // Jangan tampilkan alert di sini, biarkan UI handler yang memutuskan
-        // alert(`Login failed: ${error.message}`);
         return null;
     }
 };
@@ -56,13 +54,11 @@ export const signOut = async () => {
 };
 
 // --- INTERAKSI DENGAN GEMINI API (MELALUI PROXY) ---
-export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelId = "gemini-2.0-flash") => { // Default modelId disesuaikan
+export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelId = "gemini-2.0-flash") => {
     if (!promptText || !promptText.trim()) {
         console.warn("callGeminiAPI: promptText is empty or undefined.");
         return null;
     }
-    // Tambahkan log untuk userId di sini juga jika perlu, tapi biasanya userId untuk API call tidak langsung mempengaruhi Firestore rules
-    // console.log("callGeminiAPI called with userId for API (not Firestore path):", userId);
 
     try {
         const response = await fetch(GEMINI_PROXY_URL, {
@@ -93,7 +89,7 @@ export const callGeminiAPI = async (promptText, userId, chatHistory = [], modelI
 
 // --- FUNGSI FIRESTORE ---
 export const saveChatToFirestore = async (userId, chatId, messages, title) => {
-    console.log("[Firestore Call] saveChatToFirestore - userId:", userId, "chatId:", chatId); // DEBUG LOG
+    console.log("[Firestore Call] saveChatToFirestore - userId:", userId, "chatId:", chatId);
     if (!userId || !messages || messages.length === 0) {
         console.warn("saveChatToFirestore: Missing userId or messages. Aborting save.");
         return null;
@@ -111,7 +107,7 @@ export const saveChatToFirestore = async (userId, chatId, messages, title) => {
     });
 
     const chatData = {
-        userId: userId, // Simpan juga userId di dalam data chat untuk referensi jika perlu
+        userId: userId,
         messages: messagesToSave,
         lastMessageTimestamp: firebase.firestore.FieldValue.serverTimestamp(),
         title: title || (messages[0]?.content?.substring(0, 30) + (messages[0]?.content?.length > 30 ? '...' : '') || "New Chat")
@@ -135,7 +131,7 @@ export const saveChatToFirestore = async (userId, chatId, messages, title) => {
 };
 
 export const fetchRecentChatsFromFirestore = async (userId) => {
-    console.log("[Firestore Call] fetchRecentChatsFromFirestore - userId:", userId); // DEBUG LOG
+    console.log("[Firestore Call] fetchRecentChatsFromFirestore - userId:", userId);
     if (!userId) {
         console.warn("fetchRecentChatsFromFirestore: No userId provided. Returning empty array.");
         return [];
@@ -183,7 +179,7 @@ export const fetchChatFromFirestore = async (userId, chatId) => {
 
 // --- FUNGSI FIRESTORE (Rename & Delete) ---
 export const renameChatInFirestore = async (userId, chatId, newTitle) => {
-    console.log("[Firestore Call] renameChatInFirestore - userId:", userId, "chatId:", chatId, "newTitle:", newTitle); // DEBUG LOG
+    console.log("[Firestore Call] renameChatInFirestore - userId:", userId, "chatId:", chatId, "newTitle:", newTitle);
 	if (!userId || !chatId || !newTitle || !newTitle.trim()) {
 		console.warn("renameChatInFirestore: Missing userId, chatId, or newTitle. Aborting rename.");
 		return false;
@@ -219,7 +215,7 @@ export const deleteChatFromFirestore = async (userId, chatId) => {
 
 // --- FUNGSI FIREBASE STORAGE ---
 export const uploadFileToStorage = async (userId, file) => {
-    console.log("[Storage Call] uploadFileToStorage - userId:", userId, "fileName:", file?.name); // DEBUG LOG
+    console.log("[Storage Call] uploadFileToStorage - userId:", userId, "fileName:", file?.name);
     if (!userId || !file) {
         console.warn("uploadFileToStorage: Missing userId or file. Aborting upload.");
         return null;
