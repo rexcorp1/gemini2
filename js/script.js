@@ -1065,7 +1065,7 @@ if (recentItemOptionsMenu) {
 					const success = await renameChatInFirestore(currentUser.uid, chatId, newTitle.trim());
 					if (success) {
 						await uiLoadRecentChats();
-						if (currentChatId === chatId && userGreeting {
+						if (currentChatId === chatId && userGreeting) {
 						}
 					} else {
 						alert("Failed to rename chat.");
