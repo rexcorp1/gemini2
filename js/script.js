@@ -667,6 +667,7 @@ function addMessageToChat(text, type) {
 			if (isHistoricalMessage) {
 				div.innerHTML = marked.parse(text);
 				div.querySelectorAll('table').forEach(table => {
+					// Tambahkan wrapper untuk tabel agar bisa di-scroll jika lebar
 					const wrapper = document.createElement('div');
 					wrapper.classList.add('table-scroll-wrapper');
 					table.parentNode.insertBefore(wrapper, table);
@@ -964,18 +965,19 @@ async function uiLoadRecentChats() {
 async function uiLoadChat(chatId) {
 	if (!currentUser) return;
 	resetChatArea();
-	const loadingBubble = addMessageToChat(null, 'ai');
+	// const loadingBubble = addMessageToChat(null, 'ai'); // Hapus pembuatan bubble loading sementara
 	const chatData = await fetchChatFromFirestore(currentUser.uid, chatId);
-	if (loadingBubble) {
-		loadingBubble.remove();
-	}
+	// if (loadingBubble) {
+	// 	loadingBubble.remove(); // Hapus penghapusan bubble loading sementara
+	// }
 	if (chatData && chatData.messages) {
 		currentChatId = chatId;
 		currentChatMessages = chatData.messages ? chatData.messages.map(m => ({ ...m, timestamp: m.timestamp?.toDate() })) : [];
 
 
-		currentChatMessages.forEach(msg => {
-			addMessageToChat(msg.content, msg.role /*, msg.fileURL, msg.fileName */);
+		currentChatMessages.forEach(msg => { // Iterate through messages from Firestore
+			const messageType = msg.role === 'model' ? 'ai' : msg.role; // Map 'model' role to 'ai' type for UI
+			addMessageToChat(msg.content, messageType /*, msg.fileURL, msg.fileName */); // Add message to chat display
 		});
 		document.querySelectorAll('#recent-chats-list .sidebar-item.active').forEach(i => i.classList.remove('active'));
 		const activeItem = document.querySelector(`#recent-chats-list .sidebar-item[data-chat-id="${chatId}"]`);
@@ -1443,8 +1445,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (targetLink && targetLink.dataset.action) {
 			event.preventDefault();
 			const action = targetLink.dataset.action;
-			const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
 			console.log(`AI Message Action: "${action}" triggered for message.`);
+
+			if (action === 'copy_response') {
+				const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
+				if (messageBubble) {
+					const messageTextElement = messageBubble.querySelector('.message-text'); // Ambil elemen .message-text pertama yang ketemu
+					const textToCopy = messageTextElement ? messageTextElement.textContent : '';
+					if (textToCopy) {
+						navigator.clipboard.writeText(textToCopy.trim())
+							.then(() => {
+								alert('AI response copied to clipboard!');
+							})
+							.catch(err => {
+								console.error('Failed to copy text: ', err);
+								alert('Failed to copy text. See console for details.');
+							});
+					} else {
+						alert('No text found to copy.');
+					}
+				}
+			}
+			// Logika untuk aksi lain bisa ditambahkan di sini
+
 			aiMessageOptionsMenu.classList.remove('show');
 			currentAiMessageTriggerButton = null;
 		}
@@ -1482,6 +1505,28 @@ aiMessageOptionsSheet?.addEventListener('click', (event) => {
 		event.preventDefault();
 		const action = targetActionElement.dataset.action;
 		console.log(`AI Message Options Sheet Action: "${action}" triggered.`);
+
+		if (action === 'copy_response_sheet') {
+			const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
+			if (messageBubble) {
+				const messageTextElement = messageBubble.querySelector('.message-text'); // Ambil elemen .message-text pertama yang ketemu
+				const textToCopy = messageTextElement ? messageTextElement.textContent : '';
+				if (textToCopy) {
+					navigator.clipboard.writeText(textToCopy.trim())
+						.then(() => {
+							alert('AI response copied to clipboard!');
+						})
+						.catch(err => {
+							console.error('Failed to copy text: ', err);
+							alert('Failed to copy text. See console for details.');
+						});
+				} else {
+					alert('No text found to copy.');
+				}
+			}
+		}
+		// Logika untuk aksi lain bisa ditambahkan di sini
+
 		closeAiMessageOptionsSheet();
 	}
 });
