@@ -1098,7 +1098,7 @@ body.sidebar-closed:not(.sidebar-open-mobile) .main-content {
 	top: calc(100% + 4px);
 	left: 0;
 	background-color: var(--gem-sys-color--surface-container);
-	border-radius: 16px;
+	border-radius: 16px 16px 0px 0px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	border: none;
 	padding: 8px 0;

@@ -101,6 +101,7 @@ function updateLayout() {
 			modelDropdownMenu.style.borderTopLeftRadius = '16px';
 			modelDropdownMenu.style.borderTopRightRadius = '16px';
 			modelDropdownMenu.style.borderBottomLeftRadius = '0';
+			modelDropdownMenu.style.borderBottomRightRadius = '0'; // Tambahkan ini
 			if (!bodyElement.classList.contains('bottom-sheet-open')) {
 				modelDropdownMenu.style.transform = 'translateY(100%)';
 				modelDropdownMenu.style.opacity = '0';
@@ -127,7 +128,7 @@ function updateLayout() {
 				modelDropdownMenu.style.right = 'auto';
 				modelDropdownMenu.style.width = '320px';
 				modelDropdownMenu.style.maxWidth = '320px';
-				modelDropdownMenu.style.borderRadius = '16px';
+				modelDropdownMenu.style.borderRadius = '16px'; // Ubah ini
 				modelDropdownMenu.style.transition = 'opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease';
 				modelDropdownMenu.style.backgroundColor = 'var(--gem-sys-color--surface-container)';
 				modelDropdownMenu.style.paddingBottom = '8px';
