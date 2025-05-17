@@ -1,7 +1,5 @@
 # gemini2 - Just Simple Gemini Clone
 
-[Baca dalam: [Bahasa Indonesia](README_id.md)]
-
 [Switch to: [Bahasa Indonesia](#bahasa-indonesia)]
 
 <br>
