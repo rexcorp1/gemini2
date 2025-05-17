@@ -69,9 +69,11 @@ const DEFAULT_PROFILE_ALT = 'Profil Pengguna';
 // Application State
 let currentUser = null;
 let currentChatId = null;
+let attachedFileInfo = null; // To store info about the file to be sent { fileName, fileObject, downloadURL, filePath, tempUrl? }
 let currentChatMessages = [];
 
 const snackbarElement = document.getElementById('snackbar');
+
 function updateLayout() {
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 	if (!isMobile) {
@@ -189,7 +191,7 @@ function updateSendButtonState() {
 		sendMicButton.style.backgroundColor = 'var(--gem-sys-color--primary-container)';
 		sendMicButton.setAttribute('aria-label', 'Stop generating');
 		chatInput.disabled = true;
-	} else if (inputText !== '') {
+	} else if (inputText !== '' || attachedFileInfo) { // Enable send if text OR attachment exists
 		sendMicIcon.textContent = 'send';
 		sendMicIcon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20";
 		sendMicIcon.style.color = 'var(--default-icon-color)';
@@ -310,6 +312,11 @@ auth.onAuthStateChanged(async user => {
 		if (recentChatsList) recentChatsList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500 hide-when-closed">Log in to see recent chats.</p>';
 		currentChatId = null;
 		currentChatMessages = [];
+		if (attachedFileInfo && attachedFileInfo.tempUrl) { // Revoke temp URL if clearing
+            URL.revokeObjectURL(attachedFileInfo.tempUrl);
+        }
+		attachedFileInfo = null; // Clear attachment on sign out
+        updateAttachmentPreview(); // Update UI
 	}
 	updateLayout();
 });
@@ -336,13 +343,13 @@ if (accountDialogSignOutButton) accountDialogSignOutButton.addEventListener('cli
 });
 
 // --- UI Layer Functions for Core Logic ---
-async function uiHandleSendMessage(promptText, fileInfo = null) {
+async function uiHandleSendMessage(promptText) {
 	if (!currentUser) {
 		alert("Please log in to send messages.");
 		return;
 	}
 	const textToSend = promptText ? promptText.trim() : '';
-	if (!textToSend && !fileInfo) return;
+	if (!textToSend && !attachedFileInfo) return;
 
 	isSending = true;
 	updateSendButtonState();
@@ -378,27 +385,43 @@ async function uiHandleSendMessage(promptText, fileInfo = null) {
 	console.log("Selected UI value:", uiModelValue, "Mapped to API model ID:", selectedModelId);
 
 	let combinedPrompt = textToSend;
-	let userMessageForDisplay = textToSend;
 	let userMessageForHistory = { role: 'user', content: textToSend, timestamp: new Date() };
+    const currentAttachment = attachedFileInfo; // Use the globally attached file
 
-	if (fileInfo && fileInfo.downloadURL) {
-		const fileDisplayMessage = `File: ${fileInfo.fileName}`;
-		userMessageForDisplay = textToSend ? `${textToSend}\n${fileDisplayMessage}` : fileDisplayMessage;
-		combinedPrompt = textToSend ? `${textToSend}\n[File Ref: ${fileInfo.downloadURL}]` : `[File Ref: ${fileInfo.downloadURL}]`;
-		userMessageForHistory = { role: 'user', content: textToSend || `File: ${fileInfo.fileName}`, timestamp: new Date(), fileURL: fileInfo.downloadURL, fileName: fileInfo.fileName };
+	if (currentAttachment && currentAttachment.downloadURL) {
+		// Make the prompt more explicit when an image is present
+		const imagePromptInstruction = "Analisis gambar ini dan berikan deskripsinya.";
+		if (textToSend) {
+			combinedPrompt = `${textToSend}\n${imagePromptInstruction} [File Ref: ${currentAttachment.downloadURL}]`;
+		} else {
+			combinedPrompt = `${imagePromptInstruction} [File Ref: ${currentAttachment.downloadURL}]`;
+		}
+		userMessageForHistory = { role: 'user', content: textToSend || `File: ${currentAttachment.fileName}`, timestamp: new Date(), fileURL: currentAttachment.downloadURL, fileName: currentAttachment.fileName };
 	}
 
-	if (userMessageForDisplay) addMessageToChat(userMessageForDisplay, 'user');
+	addMessageToChat(textToSend, 'user', currentAttachment);
 	currentChatMessages.push(userMessageForHistory);
 	if (chatInput) chatInput.value = '';
 	chatInput?.dispatchEvent(new Event('input'));
+
+    if (currentAttachment && currentAttachment.tempUrl) { // Revoke temp URL if it exists
+        URL.revokeObjectURL(currentAttachment.tempUrl);
+    }
+    attachedFileInfo = null; // Clear attachment after including it in the message
+    updateAttachmentPreview(); // Update UI to remove attachment preview
 
 	const aiLoadingBubble = addMessageToChat(null, 'ai');
 	if (aiLoadingBubble) startAILoadingAnimation(aiLoadingBubble);
 
 	const historyForAPI = currentChatMessages.slice(0, -1)
-		.filter(msg => msg.role && msg.content)
-		.map(msg => ({ role: msg.role, parts: [{ text: msg.content + (msg.fileName ? ` (File: ${msg.fileName})` : '') }] }));
+		.filter(msg => msg.role)
+		.map(msg => {
+            let partsText = msg.content || "";
+            if (msg.fileURL) {
+                partsText += `\n[File Ref: ${msg.fileURL}]`;
+            }
+            return { role: msg.role, parts: [{ text: partsText.trim() }] };
+        });
 
 	const aiResponse = await callGeminiAPI(combinedPrompt, currentUser.uid, historyForAPI, selectedModelId);
 
@@ -577,9 +600,32 @@ recentItems.forEach(item => {
 	});
 });
 
-function addMessageToChat(text, type) {
+function addMessageToChat(text, type, fileInfo = null) {
 	if (!chatContentWrapper) return;
-	if (type === 'user' && !text) return;
+	if (type === 'user' && !text && !fileInfo) return;
+
+    // Helper to render KaTeX and tables for AI messages
+    function renderEnhancedContent(element) {
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(element, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                throwOnError: false
+            });
+        }
+        element.querySelectorAll('table').forEach(table => {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('table-scroll-wrapper');
+            if (table.parentNode) {
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+        });
+    }
 
 	const messageBubble = document.createElement('div');
 	messageBubble.classList.add('message-bubble', type);
@@ -588,10 +634,64 @@ function addMessageToChat(text, type) {
 		const messageContentUser = document.createElement('div');
 		messageContentUser.classList.add('message-content-user');
 
-		const messageTextDiv = document.createElement('div');
-		messageTextDiv.classList.add('message-text');
-		messageTextDiv.textContent = text;
-		messageContentUser.appendChild(messageTextDiv);
+        if (fileInfo && fileInfo.downloadURL) {
+            const fileContainer = document.createElement('div');
+            fileContainer.classList.add('message-file-container');
+
+            if (/\.(jpeg|jpg|gif|png|webp)$/i.test(fileInfo.fileName)) {
+                const imgElement = document.createElement('img');
+                imgElement.src = fileInfo.downloadURL;
+                imgElement.alt = fileInfo.fileName;
+                imgElement.classList.add('message-image-preview');
+                fileContainer.appendChild(imgElement);
+            } else {
+                // Document preview with specific container and layout
+                const docOuterContainer = document.createElement('div'); // This is the main container you asked for
+                docOuterContainer.classList.add('message-document-outer-container');
+
+                const docPreviewContainer = document.createElement('div');
+                docPreviewContainer.classList.add('message-document-preview-inner');
+
+                const fileNameWithoutExtension = fileInfo.fileName.substring(0, fileInfo.fileName.lastIndexOf('.')) || fileInfo.fileName;
+                const fileExtension = fileInfo.fileName.split('.').pop()?.toUpperCase() || 'FILE';
+
+                const fileNameElement = document.createElement('div');
+                fileNameElement.classList.add('message-document-filename');
+                fileNameElement.textContent = fileNameWithoutExtension;
+                docPreviewContainer.appendChild(fileNameElement);
+
+                const fileMetaContainer = document.createElement('div');
+                fileMetaContainer.classList.add('message-document-meta');
+
+                const fileIconImg = document.createElement('img');
+                fileIconImg.classList.add('message-document-icon-img');
+                if (fileExtension === 'PDF') {
+                    fileIconImg.src = 'assets/IMG/file-icon-pdf.png';
+                    fileIconImg.alt = 'PDF Icon';
+                } else {
+                    fileIconImg.src = 'assets/IMG/icon-file.png';
+                    fileIconImg.alt = 'Document Icon';
+                }
+                fileMetaContainer.appendChild(fileIconImg);
+
+                const fileExtensionSpan = document.createElement('span');
+                fileExtensionSpan.classList.add('message-document-extension');
+                fileExtensionSpan.textContent = fileExtension;
+                fileMetaContainer.appendChild(fileExtensionSpan);
+
+                docPreviewContainer.appendChild(fileMetaContainer);
+                docOuterContainer.appendChild(docPreviewContainer);
+                fileContainer.appendChild(docOuterContainer);
+            }
+            messageContentUser.appendChild(fileContainer);
+        }
+
+		if (text) {
+            const messageTextDiv = document.createElement('div');
+            messageTextDiv.classList.add('message-text');
+            messageTextDiv.textContent = text;
+            messageContentUser.appendChild(messageTextDiv);
+        }
 		messageBubble.appendChild(messageContentUser);
 
 	} else if (type === 'ai') {
@@ -602,7 +702,6 @@ function addMessageToChat(text, type) {
 
 		const avatarDivDesktop = document.createElement('div');
 		avatarDivDesktop.classList.add('message-avatar', 'ai-avatar');
-
 		desktopAiContent.appendChild(avatarDivDesktop);
 
 		const contentAiWrapperDesktop = document.createElement('div');
@@ -610,28 +709,11 @@ function addMessageToChat(text, type) {
 
 		const messageTextDivDesktop = document.createElement('div');
 		messageTextDivDesktop.classList.add('message-text');
-
 		contentAiWrapperDesktop.appendChild(messageTextDivDesktop);
 
 		const actionsDivDesktop = document.createElement('div');
 		actionsDivDesktop.classList.add('message-actions');
-		const desktopActions = [{
-			label: 'Like response',
-			icon: 'thumb_up',
-			id: 'like'
-		}, {
-			label: 'Dislike response',
-			icon: 'thumb_down',
-			id: 'dislike'
-		}, {
-			label: 'Share response',
-			icon: 'share',
-			id: 'share'
-		}, {
-			label: 'More options',
-			icon: 'more_vert',
-			id: 'more'
-		}];
+		const desktopActions = [{ label: 'Like response', icon: 'thumb_up', id: 'like' }, { label: 'Dislike response', icon: 'thumb_down', id: 'dislike' }, { label: 'Share response', icon: 'share', id: 'share' }, { label: 'More options', icon: 'more_vert', id: 'more' }];
 		desktopActions.forEach(action => {
 			const button = document.createElement('button');
 			button.classList.add('icon-button');
@@ -657,13 +739,12 @@ function addMessageToChat(text, type) {
 
 		const avatarDivMobile = document.createElement('div');
 		avatarDivMobile.classList.add('message-avatar', 'ai-avatar');
-
 		aiTopContentMobile.appendChild(avatarDivMobile);
 
 		const actionsDivMobileMore = document.createElement('div');
 		actionsDivMobileMore.classList.add('message-actions', 'ai-actions-mobile-more');
 		const moreButtonMobile = document.createElement('button');
-		moreButtonMobile.classList.add('icon-button', 'ai-message-more-button'); // For mobile bottom sheet
+		moreButtonMobile.classList.add('icon-button', 'ai-message-more-button');
 		moreButtonMobile.setAttribute('aria-label', 'More options');
 		const moreIconMobile = document.createElement('span');
 		moreIconMobile.classList.add('google-symbols');
@@ -671,7 +752,6 @@ function addMessageToChat(text, type) {
 		moreButtonMobile.appendChild(moreIconMobile);
 		actionsDivMobileMore.appendChild(moreButtonMobile);
 		aiTopContentMobile.appendChild(actionsDivMobileMore);
-
 		mobileAiContent.appendChild(aiTopContentMobile);
 
 		const messageTextDivMobile = document.createElement('div');
@@ -684,25 +764,7 @@ function addMessageToChat(text, type) {
 		[messageTextDivDesktop, messageTextDivMobile].forEach(div => {
 			if (isHistoricalMessage) {
 				div.innerHTML = marked.parse(text);
-				// Render matematika setelah parsing markdown
-				if (typeof renderMathInElement === 'function') {
-					renderMathInElement(div, {
-						delimiters: [
-							{left: "$$", right: "$$", display: true},
-							{left: "\\[", right: "\\]", display: true},
-							{left: "$", right: "$", display: false},
-							{left: "\\(", right: "\\)", display: false}
-						],
-						throwOnError: false // Tidak menghentikan script jika ada error LaTeX
-					});
-				}
-				div.querySelectorAll('table').forEach(table => {
-					// Tambahkan wrapper untuk tabel agar bisa di-scroll jika lebar
-					const wrapper = document.createElement('div');
-					wrapper.classList.add('table-scroll-wrapper');
-					table.parentNode.insertBefore(wrapper, table);
-					wrapper.appendChild(table);
-				});
+                renderEnhancedContent(div);
 				div.style.fontStyle = "normal";
 				div.style.color = "var(--gem-sys-color--on-surface)";
 			} else {
@@ -735,7 +797,7 @@ function addMessageToChat(text, type) {
 function startAILoadingAnimation(aiMessageBubble) {
 	if (!aiMessageBubble) return;
 	const avatarDesktopContainer = aiMessageBubble.querySelector('.desktop-only-ai-content > .message-avatar.ai-avatar');
-	const avatarMobileContainer = aiMessageBubble.querySelector('.mobile-only-ai-content .ai-top-content-mobile > .message-avatar.ai-avatar'); // Corrected selector
+	const avatarMobileContainer = aiMessageBubble.querySelector('.mobile-only-ai-content .ai-top-content-mobile > .message-avatar.ai-avatar');
 
 	[avatarDesktopContainer, avatarMobileContainer].forEach(container => {
 		if (!container) return;
@@ -766,30 +828,35 @@ function updateAIMessageBubble(aiMessageBubble, newText, isStillLoadingAnimation
 	if (!aiMessageBubble) return;
 	const textDesktopDiv = aiMessageBubble.querySelector('.desktop-only-ai-content .message-text');
 	const textMobileDiv = aiMessageBubble.querySelector('.mobile-only-ai-content .message-text');
-	const avatarDesktopContainer = aiMessageBubble.querySelector('.desktop-only-ai-content > .message-avatar.ai-avatar'); // Corrected selector
+	const avatarDesktopContainer = aiMessageBubble.querySelector('.desktop-only-ai-content > .message-avatar.ai-avatar');
 	const avatarMobileContainer = aiMessageBubble.querySelector('.mobile-only-ai-content .ai-top-content-mobile > .message-avatar.ai-avatar');
+
+    function renderEnhancedContent(element) {
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(element, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                throwOnError: false
+            });
+        }
+        element.querySelectorAll('table').forEach(table => {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('table-scroll-wrapper');
+            if (table.parentNode) {
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+        });
+    }
 
 	[textDesktopDiv, textMobileDiv].forEach(div => {
 		if (div) {
 			div.innerHTML = marked.parse(newText);
-			// Render matematika setelah parsing markdown
-			if (typeof renderMathInElement === 'function') {
-				renderMathInElement(div, {
-					delimiters: [
-						{left: "$$", right: "$$", display: true},
-						{left: "\\[", right: "\\]", display: true},
-						{left: "$", right: "$", display: false},
-						{left: "\\(", right: "\\)", display: false}
-					],
-					throwOnError: false // Tidak menghentikan script jika ada error LaTeX
-				});
-			}
-			div.querySelectorAll('table').forEach(table => {
-				const wrapper = document.createElement('div');
-				wrapper.classList.add('table-scroll-wrapper');
-				table.parentNode.insertBefore(wrapper, table);
-				wrapper.appendChild(table);
-			});
+            renderEnhancedContent(div);
 			div.style.fontStyle = isStillLoadingAnimation ? "italic" : "normal";
 			div.style.color = isStillLoadingAnimation ? "var(--gem-sys-color--on-surface-variant)" : "var(--gem-sys-color--on-surface)";
 		}
@@ -807,14 +874,13 @@ function updateAIMessageBubble(aiMessageBubble, newText, isStillLoadingAnimation
 				}
 				container.appendChild(svgNode);
 			} else {
-				console.error('Template "ai-avatar-static-final-template" not found.');
+				console.error('Template "ai-avatar-static-initial-template" not found.'); // Corrected from -final-
 			}
 		});
 	}
 }
 
 function simulateAIResponse(userMessageText) {
-	// Fungsi ini sekarang hanya untuk simulasi, logika utama ada di uiHandleSendMessage
 	const aiMessageBubble = addMessageToChat(null, 'ai');
 	if (aiMessageBubble) startAILoadingAnimation(aiMessageBubble);
 
@@ -831,7 +897,7 @@ sendMicButton?.addEventListener('click', () => {
 		console.log('Stop generating (placeholder)');
 		isSending = false;
 		updateSendButtonState();
-	} else if (chatInput.value.trim() !== '') {
+	} else if (chatInput.value.trim() !== '' || attachedFileInfo) {
 		const userMessageText = chatInput.value.trim();
 		uiHandleSendMessage(userMessageText);
 	} else {
@@ -843,7 +909,7 @@ chatInput?.addEventListener('keydown', (event) => {
 	if (event.key === 'Enter') {
 		if (event.shiftKey || event.ctrlKey) { } else {
 			event.preventDefault();
-			if (sendMicButton && chatInput.value.trim() !== '' && !isSending) {
+			if (sendMicButton && (chatInput.value.trim() !== '' || attachedFileInfo) && !isSending) {
 				sendMicButton.click();
 			}
 		}
@@ -858,6 +924,11 @@ function resetChatArea() {
 		chatInput.value = '';
 		chatInput.dispatchEvent(new Event('input'));
 	}
+    if (attachedFileInfo && attachedFileInfo.tempUrl) {
+        URL.revokeObjectURL(attachedFileInfo.tempUrl);
+    }
+    attachedFileInfo = null;
+    updateAttachmentPreview();
 	toggleEmptyStateUI();
 	updateSendButtonState();
 	isSending = false;
@@ -890,19 +961,21 @@ async function uiSaveChat() {
 		title = loadedChat?.title;
 	}
 	if (!title) {
-		const firstUserMsg = currentChatMessages.find(m => m.role === 'user' && m.content?.trim());
-		if (firstUserMsg) title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
-		else {
-			const firstFileMsg = currentChatMessages.find(m => m.role === 'user' && m.fileName);
-			if (firstFileMsg) title = `Chat with ${firstFileMsg.fileName.substring(0, 20)}...`;
-		}
+		const firstUserMsg = currentChatMessages.find(m => m.role === 'user' && (m.content?.trim() || m.fileName));
+		if (firstUserMsg) {
+            if (firstUserMsg.content?.trim()) {
+                title = firstUserMsg.content.substring(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '');
+            } else if (firstUserMsg.fileName) {
+                title = `Chat with ${firstUserMsg.fileName.substring(0, 20)}...`;
+            }
+        }
 	}
 	title = title || "New Chat";
 
 	const messagesForDb = currentChatMessages.map(m => {
 		const messageData = {
 			role: m.role,
-			content: m.content,
+			content: m.content || "",
 			timestamp: m.timestamp
 		};
 
@@ -973,7 +1046,7 @@ async function uiLoadRecentChats() {
 
 	if (chats.length > displayLimit) {
 		const showMoreButton = document.createElement('button');
-		showMoreButton.className = 'sidebar-item flex items-center space-x-1 px-3 py-2 text-sm hover:bg-gray-200 w-full text-left mt-1 rounded-full show-more-button hide-when-closed'; // Gunakan class dari HTML awal
+		showMoreButton.className = 'sidebar-item flex items-center space-x-1 px-3 py-2 text-sm hover:bg-gray-200 w-full text-left mt-1 rounded-full show-more-button hide-when-closed';
 
 		const textSpan = document.createElement('span');
 		textSpan.textContent = 'Show more';
@@ -1007,19 +1080,19 @@ async function uiLoadRecentChats() {
 async function uiLoadChat(chatId) {
 	if (!currentUser) return;
 	resetChatArea();
-	// const loadingBubble = addMessageToChat(null, 'ai'); // Hapus pembuatan bubble loading sementara
 	const chatData = await fetchChatFromFirestore(currentUser.uid, chatId);
-	// if (loadingBubble) {
-	// 	loadingBubble.remove(); // Hapus penghapusan bubble loading sementara
-	// }
+
 	if (chatData && chatData.messages) {
 		currentChatId = chatId;
 		currentChatMessages = chatData.messages ? chatData.messages.map(m => ({ ...m, timestamp: m.timestamp?.toDate() })) : [];
 
-
-		currentChatMessages.forEach(msg => { // Iterate through messages from Firestore
-			const messageType = msg.role === 'model' ? 'ai' : msg.role; // Map 'model' role to 'ai' type for UI
-			addMessageToChat(msg.content, messageType /*, msg.fileURL, msg.fileName */); // Add message to chat display
+		currentChatMessages.forEach(msg => {
+			const messageType = msg.role === 'model' ? 'ai' : msg.role;
+            let fileDataForDisplay = null;
+            if (msg.fileURL && msg.fileName) {
+                fileDataForDisplay = { downloadURL: msg.fileURL, fileName: msg.fileName };
+            }
+			addMessageToChat(msg.content, messageType, fileDataForDisplay);
 		});
 		document.querySelectorAll('#recent-chats-list .sidebar-item.active').forEach(i => i.classList.remove('active'));
 		const activeItem = document.querySelector(`#recent-chats-list .sidebar-item[data-chat-id="${chatId}"]`);
@@ -1035,12 +1108,52 @@ function uiStartNewChat() {
 	resetChatArea();
 	currentChatId = null;
 	currentChatMessages = [];
-	if (currentUser) {
-	} else {
-	}
 	document.querySelectorAll('#recent-chats-list .sidebar-item.active').forEach(i => i.classList.remove('active'));
 	chatInput?.focus();
 	toggleEmptyStateUI();
+}
+
+function updateAttachmentPreview() {
+    const attachmentPreviewArea = document.getElementById('attachment-preview-area');
+    if (!attachmentPreviewArea) return;
+
+    if (attachedFileInfo) {
+        let previewContentHTML = '';
+
+        if (/\.(jpeg|jpg|gif|png|webp)$/i.test(attachedFileInfo.fileName)) {
+           if (attachedFileInfo.fileObject && typeof URL.createObjectURL === 'function') {
+               if (attachedFileInfo.tempUrl) URL.revokeObjectURL(attachedFileInfo.tempUrl); // Revoke previous if any
+               attachedFileInfo.tempUrl = URL.createObjectURL(attachedFileInfo.fileObject);
+               previewContentHTML = `<img src="${attachedFileInfo.tempUrl}" alt="Preview">`;
+           } else if (attachedFileInfo.downloadURL) { // Fallback if fileObject not available but URL is
+               previewContentHTML = `<img src="${attachedFileInfo.downloadURL}" alt="Preview">`;
+           }
+        } else {
+           previewContentHTML = `<span class="google-symbols file-icon">description</span>`;
+        }
+
+        attachmentPreviewArea.innerHTML = `
+            <div class="attachment-thumbnail-container">
+                    ${previewContentHTML}
+               <button id="remove-attachment-button" class="remove-attachment-button" aria-label="Remove attachment">
+                   <span class="google-symbols">close</span>
+               </button>
+           </div>
+        `;
+        document.getElementById('remove-attachment-button')?.addEventListener('click', () => {
+           if (attachedFileInfo && attachedFileInfo.tempUrl) {
+               URL.revokeObjectURL(attachedFileInfo.tempUrl);
+               delete attachedFileInfo.tempUrl;
+           }
+           attachedFileInfo = null;
+           updateAttachmentPreview();
+           updateSendButtonState();
+        });
+        attachmentPreviewArea.style.display = 'flex';
+    } else {
+        attachmentPreviewArea.innerHTML = '';
+        attachmentPreviewArea.style.display = 'none';
+    }
 }
 
 async function uiHandleFileUpload(file) {
@@ -1048,16 +1161,22 @@ async function uiHandleFileUpload(file) {
 		alert("Please log in to upload files.");
 		return null;
 	}
-	addMessageToChat(`Uploading ${file.name}... (this is a user message)`, 'user');
-
+	showSnackbar(`Uploading ${file.name}...`, 5000);
 	const uploadResult = await uploadFileToStorage(currentUser.uid, file);
 
 	if (uploadResult) {
-		await uiHandleSendMessage(null, uploadResult);
+        showSnackbar(`${file.name} attached.`, 3000);
+		attachedFileInfo = {
+           fileName: file.name,
+           fileObject: file, // The actual File object for local preview
+           downloadURL: uploadResult.downloadURL, // URL after upload
+           filePath: uploadResult.filePath
+       };
+        updateAttachmentPreview();
+        updateSendButtonState();
 		return uploadResult;
 	} else {
-		addMessageToChat(`Failed to upload ${file.name}.`, 'user');
-		alert(`Failed to upload ${file.name}.`);
+        showSnackbar(`Failed to upload ${file.name}.`, 3000);
 		return null;
 	}
 }
@@ -1109,8 +1228,6 @@ if (recentItemOptionsMenu) {
 					const success = await renameChatInFirestore(currentUser.uid, chatId, newTitle.trim());
 					if (success) {
 						await uiLoadRecentChats();
-						if (currentChatId === chatId && userGreeting) {
-						}
 					} else {
 						alert("Failed to rename chat.");
 					}
@@ -1176,8 +1293,6 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', () => {
 	const recentChatsList = document.getElementById('recent-chats-list');
 	let currentTargetRecentItem = null;
-	// const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu'); // Sudah dideklarasikan global
-	// let currentAiMessageTriggerButton = null; // Hapus deklarasi lokal ini, gunakan yang global
 
 	const inputAddButton = document.getElementById('input-add-button');
 	const contextMenuInput = document.getElementById('input-add-options-menu');
@@ -1386,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		console.warn('Settings help button or its context menu element not found.');
 	}
 
-	// Theme logic (moved from inside DOMContentLoaded)
+	// Theme logic
 	let activeSubmenu = null;
 	let hideSubmenuTimer = null;
 	const htmlEl = document.documentElement;

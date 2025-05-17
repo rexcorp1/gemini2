@@ -2,17 +2,15 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
+	<meta charset="UTF-8"> 
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="icon" href="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" sizes="any" type="image/svg+xml">
-	<link rel="icon" href="https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png" sizes="any" type="image/png">
+	<link rel="icon" href="assets/IMG/gemini_sparkle_v002.svg" sizes="any" type="image/svg+xml"> 
+	<link rel="icon" href="assets/IMG/gemini_favicon.png" sizes="any" type="image/png">
 	<title>Gemini</title>
 	<script src="https://cdn.tailwindcss.com"></script>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Google+Sans+Text:wght@400;500&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="css/style.css">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k55AIcd2uy7gY9b2Kj8vIqMZN2g62/7T5yH2Y9s1GDJmZqjQhS+q7xSFz" crossorigin="anonymous">
+	<link href="css/google-font.css" rel="stylesheet">
+	<link rel="stylesheet" href="css/style.css"> 
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k558AjM3Yz3BBFQUbk/zgIYC2R0QpeeYb+TwlBVMrlgLqwRjRtGZiK7ww" crossorigin="anonymous">
 </head>
 
 <body class="sidebar-closed">
@@ -90,6 +88,9 @@
 			</div>
 			<div class="input-container">
 				<div class="input-area-wrapper">
+					<div id="attachment-preview-area" style="display: none;">
+						<!-- Konten preview akan di-generate oleh JavaScript -->
+					</div>
 					<div class="input-top-row">
 						<textarea id="chat-input" rows="1" placeholder="Ask Gemini"></textarea>
 					</div>
@@ -195,8 +196,8 @@
 </div>
 
 <div id="account-dialog-overlay" class="fixed inset-0 bg-black bg-opacity-30 z-[1050] hidden">
-	<div id="account-dialog"
-		class="absolute top-16 right-4 bg-[--gem-sys-color--surface-container-high] text-[--gem-sys-color--on-surface] rounded-2xl shadow-xl w-72 p-0 overflow-hidden">
+	<div id="account-dialog" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+		md:top-16 md:left-auto md:right-4 md:translate-x-0 md:translate-y-0 bg-[--gem-sys-color--surface-container-high] text-[--gem-sys-color--on-surface] rounded-2xl shadow-xl w-72 p-0 overflow-hidden">
 		<div class="px-4 pt-4 pb-2 flex items-center justify-center relative">
 			<p id="account-dialog-user-email-top" class="text-xs text-[--gem-sys-color--on-surface-variant] truncate">
 				userlongemailaddress@example.com</p> <button id="account-dialog-close-button-x"
@@ -287,9 +288,9 @@
 	<div id="snackbar" class="snackbar"></div>
 	<input type="file" id="file-upload-input" hidden>
 
-	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoFvW_K_hDPo9wDKj8r+h6gLPDWfH3sLFNxGjGq+H94zLzB52Kj9DqH/xYp+k+0" crossorigin="anonymous"></script>
-	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaL4G_VTJHrMuM6OBKzYgD6R4YpAWJqM/2/kLhLqPqS5bL7W1L3b+g" crossorigin="anonymous"onload="console.log('KaTeX auto-render loaded.')"></script>
-	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoBPJpTUs74ddyc4bFZSM1TVlQDA60VBbJS0oA934VSz82sBx1X7kSx2ATBDIyd" crossorigin="anonymous"></script>
+	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body, { delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ], throwOnError: false });"></script>
+	<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
