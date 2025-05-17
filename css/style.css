@@ -1816,3 +1816,42 @@ html.dark-theme .ai-message-options-sheet-container .ai-message-options-menu li 
 		display: none !important;
 	}
 }
+
+.snackbar {
+  visibility: hidden;
+  min-width: 250px;
+  max-width: 90%;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 16px;
+  position: fixed;
+  z-index: 1010;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%) translateY(100px);
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.snackbar.show {
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .snackbar {
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    transform: translateY(100px);
+    min-width: auto;
+  }
+  .snackbar.show {
+    transform: translateY(0);
+  }
+}

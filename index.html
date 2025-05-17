@@ -12,6 +12,7 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Google+Sans+Text:wght@400;500&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k55AIcd2uy7gY9b2Kj8vIqMZN2g62/7T5yH2Y9s1GDJmZqjQhS+q7xSFz" crossorigin="anonymous">
 </head>
 
 <body class="sidebar-closed">
@@ -282,9 +283,12 @@
 	<template id="ai-avatar-static-final-template">
 		<img src="assets/IMG/ai-avatar.svg" alt="AI Avatar" width="30" height="30">
 	</template>
-
+	
+	<div id="snackbar" class="snackbar"></div>
 	<input type="file" id="file-upload-input" hidden>
 
+	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoFvW_K_hDPo9wDKj8r+h6gLPDWfH3sLFNxGjGq+H94zLzB52Kj9DqH/xYp+k+0" crossorigin="anonymous"></script>
+	<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaL4G_VTJHrMuM6OBKzYgD6R4YpAWJqM/2/kLhLqPqS5bL7W1L3b+g" crossorigin="anonymous"onload="console.log('KaTeX auto-render loaded.')"></script>
 	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>

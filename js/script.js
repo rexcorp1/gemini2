@@ -71,6 +71,7 @@ let currentUser = null;
 let currentChatId = null;
 let currentChatMessages = [];
 
+const snackbarElement = document.getElementById('snackbar');
 function updateLayout() {
 	const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 	if (!isMobile) {
@@ -157,6 +158,23 @@ function toggleEmptyStateUI() {
 	chatContentWrapper.style.display = hasMessages ? 'flex' : 'none';
 	disclaimerText.style.visibility = hasMessages ? 'visible' : 'hidden';
 }
+
+let snackbarTimeout; // Variabel untuk menyimpan timeout snackbar
+
+function showSnackbar(message, duration = 3000) {
+    if (!snackbarElement) return;
+
+    // Hapus timeout sebelumnya jika ada, untuk mencegah snackbar hilang terlalu cepat jika dipanggil berulang kali
+    clearTimeout(snackbarTimeout);
+
+    snackbarElement.textContent = message;
+    snackbarElement.classList.add('show');
+
+    snackbarTimeout = setTimeout(() => {
+        snackbarElement.classList.remove('show');
+    }, duration);
+}
+
 
 function updateSendButtonState() {
 	if (!sendMicButton || !sendMicIcon || !chatInput) return;
@@ -666,6 +684,18 @@ function addMessageToChat(text, type) {
 		[messageTextDivDesktop, messageTextDivMobile].forEach(div => {
 			if (isHistoricalMessage) {
 				div.innerHTML = marked.parse(text);
+				// Render matematika setelah parsing markdown
+				if (typeof renderMathInElement === 'function') {
+					renderMathInElement(div, {
+						delimiters: [
+							{left: "$$", right: "$$", display: true},
+							{left: "\\[", right: "\\]", display: true},
+							{left: "$", right: "$", display: false},
+							{left: "\\(", right: "\\)", display: false}
+						],
+						throwOnError: false // Tidak menghentikan script jika ada error LaTeX
+					});
+				}
 				div.querySelectorAll('table').forEach(table => {
 					// Tambahkan wrapper untuk tabel agar bisa di-scroll jika lebar
 					const wrapper = document.createElement('div');
@@ -742,6 +772,18 @@ function updateAIMessageBubble(aiMessageBubble, newText, isStillLoadingAnimation
 	[textDesktopDiv, textMobileDiv].forEach(div => {
 		if (div) {
 			div.innerHTML = marked.parse(newText);
+			// Render matematika setelah parsing markdown
+			if (typeof renderMathInElement === 'function') {
+				renderMathInElement(div, {
+					delimiters: [
+						{left: "$$", right: "$$", display: true},
+						{left: "\\[", right: "\\]", display: true},
+						{left: "$", right: "$", display: false},
+						{left: "\\(", right: "\\)", display: false}
+					],
+					throwOnError: false // Tidak menghentikan script jika ada error LaTeX
+				});
+			}
 			div.querySelectorAll('table').forEach(table => {
 				const wrapper = document.createElement('div');
 				wrapper.classList.add('table-scroll-wrapper');
@@ -1134,8 +1176,8 @@ window.addEventListener('resize', () => {
 document.addEventListener('DOMContentLoaded', () => {
 	const recentChatsList = document.getElementById('recent-chats-list');
 	let currentTargetRecentItem = null;
-	const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu');
-	let currentAiMessageTriggerButton = null;
+	// const aiMessageOptionsMenu = document.getElementById('ai-message-options-menu'); // Sudah dideklarasikan global
+	// let currentAiMessageTriggerButton = null; // Hapus deklarasi lokal ini, gunakan yang global
 
 	const inputAddButton = document.getElementById('input-add-button');
 	const contextMenuInput = document.getElementById('input-add-options-menu');
@@ -1433,6 +1475,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 			if (isMobile) {
 				currentAiMessageTriggerButton = moreButton;
+			console.log('[CHAT CONTENT WRAPPER CLICK - MOBILE] currentAiMessageTriggerButton SET TO:', currentAiMessageTriggerButton);
 				openAiMessageOptionsSheet();
 			} else {
 				toggleAiMessageMenu(moreButton);
@@ -1450,23 +1493,22 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (action === 'copy_response') {
 				const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
 				if (messageBubble) {
-					const messageTextElement = messageBubble.querySelector('.message-text'); // Ambil elemen .message-text pertama yang ketemu
+					const messageTextElement = messageBubble.querySelector('.message-text');
 					const textToCopy = messageTextElement ? messageTextElement.textContent : '';
 					if (textToCopy) {
 						navigator.clipboard.writeText(textToCopy.trim())
 							.then(() => {
-								alert('AI response copied to clipboard!');
+								showSnackbar('Copied to clipboard');
 							})
 							.catch(err => {
 								console.error('Failed to copy text: ', err);
-								alert('Failed to copy text. See console for details.');
+								showSnackbar('Failed to copy text. See console.');
 							});
 					} else {
-						alert('No text found to copy.');
+						showSnackbar('No text found to copy.');
 					}
 				}
 			}
-			// Logika untuk aksi lain bisa ditambahkan di sini
 
 			aiMessageOptionsMenu.classList.remove('show');
 			currentAiMessageTriggerButton = null;
@@ -1505,29 +1547,40 @@ aiMessageOptionsSheet?.addEventListener('click', (event) => {
 		event.preventDefault();
 		const action = targetActionElement.dataset.action;
 		console.log(`AI Message Options Sheet Action: "${action}" triggered.`);
-
+		console.log('[AI OPTIONS SHEET CLICK] currentAiMessageTriggerButton IS:', currentAiMessageTriggerButton);
 		if (action === 'copy_response_sheet') {
+			console.log("copy_response_sheet: currentAiMessageTriggerButton:", currentAiMessageTriggerButton);
 			const messageBubble = currentAiMessageTriggerButton?.closest('.message-bubble.ai');
+			console.log("copy_response_sheet: messageBubble:", messageBubble);
 			if (messageBubble) {
-				const messageTextElement = messageBubble.querySelector('.message-text'); // Ambil elemen .message-text pertama yang ketemu
-				const textToCopy = messageTextElement ? messageTextElement.textContent : '';
+				const mobileContent = currentAiMessageTriggerButton?.closest('.mobile-only-ai-content');
+				console.log("copy_response_sheet: mobileContent:", mobileContent);
+				const messageTextElement = mobileContent ? mobileContent.querySelector('.message-text') : null;
+				console.log("copy_response_sheet: messageTextElement:", messageTextElement);
+				const textToCopy = messageTextElement ? messageTextElement.textContent.trim() : '';
+				console.log("copy_response_sheet: textToCopy:", `'${textToCopy}'`);
 				if (textToCopy) {
 					navigator.clipboard.writeText(textToCopy.trim())
 						.then(() => {
-							alert('AI response copied to clipboard!');
+							showSnackbar('Copied to clipboard');
+							console.log('Text copied successfully to clipboard.');
 						})
 						.catch(err => {
 							console.error('Failed to copy text: ', err);
-							alert('Failed to copy text. See console for details.');
+							showSnackbar('Failed to copy text. See console.');
 						});
 				} else {
-					alert('No text found to copy.');
+					showSnackbar('No text found to copy.');
+					console.warn('No text found to copy. messageTextElement might be null or its textContent is empty.');
 				}
+			} else {
+				console.warn("copy_response_sheet: messageBubble not found based on currentAiMessageTriggerButton.");
 			}
 		}
-		// Logika untuk aksi lain bisa ditambahkan di sini
 
 		closeAiMessageOptionsSheet();
+		currentAiMessageTriggerButton = null;
+		console.log('[AI OPTIONS SHEET CLICK] currentAiMessageTriggerButton NULLED after action.');
 	}
 });
 
